@@ -1,6 +1,6 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ 终极大一统版 (双段式交互劫持 + 彻底物理隔离)
+# 天网系统 V22+ 终极大一统版 (修复终端输入卡死 + 双段式交互劫持)
 # ====================================================================
 clear
 echo -e "\033[1;36m=================================================================\033[0m"
@@ -37,7 +37,8 @@ echo -e "\n\033[1;33m[阶段 0] 纯 IPv6 环境初始化 - 准备接入 WARP\033
 echo -e "\033[1;36m👉 如果您已经成功安装过全局 WARP (已获取 IPv4)，请直接按【回车键】跳过此步！\033[0m"
 read -t 10 -p "👉 否则，输入 'y' 呼出 fscarmen 的 WARP 菜单进行安装: " run_warp
 if [[ "$run_warp" == "y" || "$run_warp" == "Y" ]]; then
-    wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh
+    wget -qO warp_menu.sh https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && chmod +x warp_menu.sh && bash warp_menu.sh
+    rm -f warp_menu.sh
     echo -e "\n\033[1;35m⏸️ 探测到 WARP 部署结束，主脚本恢复执行...\033[0m"
 fi
 
@@ -45,17 +46,19 @@ apt-get update -y >/dev/null 2>&1
 apt-get install -y curl wget socat net-tools psmisc jq unzip tar openssl cron nano >/dev/null 2>&1
 
 # ====================================================================
-# 1. 借鸡生蛋：呼出勇哥脚本，获取第三方赛风核心 (支持多段式交互)
+# 1. 借鸡生蛋：呼出勇哥脚本，获取第三方赛风核心 (修复卡死问题)
 # ====================================================================
 echo -e "\n\033[1;33m[阶段 1] 借壳提取第三方核心...\033[0m"
 echo -e "\033[1;36m即将呼出勇哥的 Sing-box 官方脚本。请注意：\033[0m"
-echo -e "1. 第一次运行可能只是【初始化环境】并安装默认协议。"
-echo -e "2. 退出后，我们会提示您，您可以再次呼出菜单，去添加【包含赛风的协议】。"
+echo -e "1. 看到菜单后，请按 \033[1;32m1\033[0m 进行基础安装。"
+echo -e "2. 安装退出后，请选择再次唤起菜单，去添加【包含赛风的协议】。"
 echo -e "3. 请在添加时，将端口设置成你喜欢的 (比如 \033[1;32m40000\033[0m)。"
 read -p "👉 明白请按回车键启动勇哥脚本 (首次初始化)..." 
 
-# 第一次运行勇哥脚本
-bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh)
+# 修复卡死：下载到本地后再执行，保证键盘输入流不被劫持
+wget -qO sb.sh https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh
+chmod +x sb.sh
+bash sb.sh
 
 # 核心交互循环：应对勇哥脚本的分步安装机制
 while true; do
@@ -71,8 +74,7 @@ while true; do
         elif [ -f "/usr/bin/sb" ]; then
             /usr/bin/sb
         else
-            echo "找不到 sb 快捷命令，重新拉取原始脚本..."
-            bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh)
+            bash sb.sh
         fi
     elif [ "$sub_choice" == "2" ]; then
         break
@@ -80,6 +82,9 @@ while true; do
         echo "❌ 输入错误，请选择 1 或 2。"
     fi
 done
+
+# 清理我们刚才下载的勇哥原脚本
+rm -f sb.sh
 
 echo -e "\n\033[1;35m🚀 赛风通道确认完毕，天网核心劫持程序全功率启动！\033[0m"
 
@@ -95,7 +100,7 @@ if [ ! -f "/etc/s-box/sbwpph" ]; then
     exit 1
 fi
 
-# 从勇哥生成的 sb.json 中智能提取用户设置的端口和密码 (极度谨慎的正则提取)
+# 从勇哥生成的 sb.json 中智能提取用户设置的端口和密码
 USER_PORT=$(grep -Eo '"listen_port":[ \t]*[0-9]+' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | grep -Eo '[0-9]+')
 USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | awk -F'"' '{print $4}')
 
@@ -429,7 +434,6 @@ action_cf_nodes() {
     CF1=$(cat /etc/s-box/cf_s1.info); CF2=$(cat /etc/s-box/cf_s2.info); CF3=$(cat /etc/s-box/cf_s3.info)
     UUID=$(cat /etc/s-box/vless_uuid.info); PASS=$(cat /etc/s-box/hy2_pass.info)
     
-    # 动态获取当前使用的端口
     P1=$(grep -oP '"listen_port":\s*\K\d+' /etc/s-box/front.json | sed -n '1p')
     P2=$(grep -oP '"listen_port":\s*\K\d+' /etc/s-box/front.json | sed -n '2p')
     P3=$(grep -oP '"listen_port":\s*\K\d+' /etc/s-box/front.json | sed -n '3p')
