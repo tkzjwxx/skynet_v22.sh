@@ -1,16 +1,16 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ (大道至简 + 极速杀启秒测版)
+# 天网系统 V22+ (回归 V9.5 极速抽卡打捞版)
 # ====================================================================
 clear
 echo -e "\033[1;36m=================================================================\033[0m"
-echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (极简暴君重构版) 🛡️\033[0m"
+echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (极速秒测重构版) 🛡️\033[0m"
 echo -e "\033[1;36m=================================================================\033[0m"
 echo -e "\033[1;33m[前置要求] 执行安装前，请确保您已手动完成以下两步：\033[0m"
 echo -e "  1. 已安装 WARP (VPS 必须已具备 IPv4 出口能力)。"
 echo -e "  2. 已通过第三方脚本安装了包含赛风的协议，且\033[1;31m端口必须设为 40000\033[0m。"
 echo -e "\033[1;36m-----------------------------------------------------------------\033[0m"
-echo -e "  \033[1;32m[1]\033[0m 🚀 嗅探环境并部署天网 (无损克隆，激活暴君回档引擎)"
+echo -e "  \033[1;32m[1]\033[0m 🚀 嗅探环境并部署天网 (无损克隆，激活极速打捞引擎)"
 echo -e "  \033[1;31m[2]\033[0m 🗑️ 定向卸载天网 (仅剥离天网组件，\033[1;32m绝对保留 WARP 与原版脚本\033[0m)"
 echo -e "  \033[1;33m[0]\033[0m 🚪 退出"
 echo -e "\033[1;36m=================================================================\033[0m"
@@ -29,6 +29,7 @@ if [ "$menu_choice" == "2" ]; then
     systemctl daemon-reload
     
     crontab -l 2>/dev/null | grep -v "stability.log" | crontab -
+    sed -i '/precedence ::ffff:0:0\/96/d' /etc/gai.conf 2>/dev/null
     
     echo -e "\033[1;32m🎉 卸载完毕！天网系统已完美物理剥离。\033[0m"
     exit 0
@@ -39,7 +40,7 @@ elif [ "$menu_choice" != "1" ]; then
 fi
 
 clear
-echo -e "\033[1;31m🔥 正在执行【天网 V22+】环境嗅探与极简重构...\033[0m"
+echo -e "\033[1;31m🔥 正在执行【天网 V22+】环境嗅探与重构...\033[0m"
 
 # ====================================================================
 # 1. 前置条件检测
@@ -48,7 +49,6 @@ apt-get update -y >/dev/null 2>&1
 apt-get install -y curl wget socat net-tools psmisc jq unzip tar openssl cron nano haveged rng-tools >/dev/null 2>&1
 systemctl enable --now haveged >/dev/null 2>&1
 
-# 强制 IPv4 优先，解决 DNS 黑洞
 sed -i '/precedence ::ffff:0:0\/96/d' /etc/gai.conf 2>/dev/null
 echo "precedence ::ffff:0:0/96  100" >> /etc/gai.conf
 
@@ -73,7 +73,7 @@ fi
 echo -e "\033[1;32m[通过] (核心: $CORE_FILE)\033[0m"
 
 # ====================================================================
-# 2. 基因克隆：建立绝对隔离的 /etc/skynet 基地
+# 2. 建立隔离基地
 # ====================================================================
 USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | awk -F'"' '{print $4}')
 [ -z "$USER_PASS" ] && USER_PASS="Skynet_$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
@@ -83,7 +83,6 @@ systemctl stop sing-box 2>/dev/null; systemctl disable sing-box 2>/dev/null
 kill -9 $TARGET_PID 2>/dev/null
 
 rm -rf /etc/skynet; mkdir -p /etc/skynet
-# 建立工作区与黄金回档区，完整克隆账号文件 (.os)
 for i in {1..4}; do
     mkdir -p /etc/skynet/sub$i /etc/skynet/golden_$i
     cp -a "$CORE_DIR/." /etc/skynet/sub$i/ 2>/dev/null
@@ -142,12 +141,12 @@ echo "US" > /etc/skynet/sub1/region.info; echo "GB" > /etc/skynet/sub2/region.in
 echo "JP" > /etc/skynet/sub3/region.info; echo "US" > /etc/skynet/sub4/region.info
 
 # ====================================================================
-# 4. 暴君哨兵 w_master (容忍延迟，双重校验)
+# 4. 暴君哨兵 w_master
 # ====================================================================
 cat > /usr/bin/w_master << 'EOF'
 #!/bin/bash
 SLA_LOG="/etc/skynet/stability.log"
-APIS=("http://api.ipify.org" "http://icanhazip.com" "http://ifconfig.me/ip" "http://ident.me" "http://checkip.amazonaws.com" "http://ipecho.net/plain" "http://whatismyip.akamai.com" "http://eth0.me" "http://wgetip.com")
+APIS=("http://api.ipify.org" "http://icanhazip.com" "http://ifconfig.me/ip" "http://ident.me" "http://checkip.amazonaws.com")
 
 echo "$(date '+[%m-%d %H:%M:%S]') 🚀 VPS开机！暴君哨兵就绪，启动全境巡逻。" >> "$SLA_LOG"
 
@@ -166,16 +165,11 @@ while true; do
         LOCK="$WORK/s$N.lock"; [ ! -f "$LOCK" ] && continue
         TARGET=$(cat "$LOCK" | tr -d '[:space:]'); [ -z "$TARGET" ] && continue
         
-        CURRENT=$(curl -s4 --max-time 10 --socks5 127.0.0.1:$IN_PORT ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
-        
-        if [ -z "$CURRENT" ]; then
-            sleep 6
-            CURRENT=$(curl -s4 --max-time 10 --socks5 127.0.0.1:$IN_PORT ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
-        fi
+        CURRENT=$(curl -s4 -m 8 --socks5 127.0.0.1:$IN_PORT ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
 
         if [[ "$CURRENT" == "$TARGET" ]]; then
             if ! netstat -tlnp 2>/dev/null | grep -q ":$OUT_PORT "; then
-                (socat TCP4-LISTEN:$OUT_PORT,fork,reuseaddr TCP4:127.0.0.1:$IN_PORT >/dev/null 2>&1 &)
+                setsid socat TCP4-LISTEN:$OUT_PORT,fork,reuseaddr TCP4:127.0.0.1:$IN_PORT >/dev/null 2>&1 &
                 echo "$(date '+[%m-%d %H:%M:%S]') [🟢 守护] S$N 快照无损，气闸畅通！" >> "$SLA_LOG"
                 [ ! -f "$WORK/s$N.session" ] && date +%s > "$WORK/s$N.session"
             fi
@@ -188,14 +182,13 @@ while true; do
             pkill -9 -f "127.0.0.1:$IN_PORT" 2>/dev/null
             rm -f "$WORK/s$N.session" 2>/dev/null
             
-            # 仅删除缓存，保留账号，覆盖黄金快照
-            rm -rf $WORK/.cache 2>/dev/null
+            rm -rf $WORK/.cache $WORK/*.os $WORK/*.db* 2>/dev/null
             cp -a /etc/skynet/golden_$N/. $WORK/ 2>/dev/null
             
             EP=$(cat "$WORK/current.endpoint" 2>/dev/null); [ -z "$EP" ] && EP="162.159.192.1:2408"
             cd $WORK; export HOME=$WORK
-            (nohup ./sbwpph -b 127.0.0.1:$IN_PORT --cfon --country $(cat region.info) -4 --endpoint "$EP" >/dev/null 2>&1 &)
-            date +%s > "$WORK/s$N.boot" # 颁发免死金牌
+            setsid ./sbwpph -b 127.0.0.1:$IN_PORT --cfon --country $(cat region.info) -4 --endpoint "$EP" >/dev/null 2>&1 &
+            date +%s > "$WORK/s$N.boot"
         fi
     done
     sleep 20
@@ -214,7 +207,7 @@ EOF
 systemctl enable --now w_master >/dev/null 2>&1
 
 # ====================================================================
-# 5. 终极控制台 tw (彻底消音，绝不保留假沙盒)
+# 5. 终极控制台 tw (100% 像素级复刻 V9.5 的极速沙盒逻辑)
 # ====================================================================
 cat << 'EOF' > /usr/bin/tw
 #!/bin/bash
@@ -222,8 +215,9 @@ rm -f /etc/skynet/sub*/s*.manual 2>/dev/null
 cleanup_manual() { rm -f /etc/skynet/sub*/s*.manual 2>/dev/null; }
 trap 'cleanup_manual; echo -e "\n\033[1;31m[安全中断] 退出天网总控台...\033[0m"; exit 0' INT TERM QUIT HUP
 
-APIS=("http://api.ipify.org" "http://icanhazip.com" "http://ifconfig.me/ip" "http://ident.me" "http://checkip.amazonaws.com" "http://ipecho.net/plain" "http://whatismyip.akamai.com" "http://eth0.me" "http://wgetip.com")
-ENDPOINTS=("162.159.192.1:2408" "162.159.193.1:2408" "162.159.195.1:2408" "engage.cloudflareclient.com:2408" "162.159.36.1:2408" "162.159.132.53:2408")
+APIS=("http://api.ipify.org" "http://icanhazip.com" "http://ifconfig.me/ip" "http://ident.me" "http://checkip.amazonaws.com")
+# 剔除域名，保留最稳健的官方纯 IPv4 端点，极大提升注册成功率！
+ENDPOINTS=("162.159.192.1:2408" "162.159.193.1:2408" "162.159.195.1:2408" "162.159.36.1:2408")
 
 get_node_vars() {
     N_IN=$((2080 + $1)); N_OUT=$((1080 + $1)); N_DIR="/etc/skynet/sub$1"
@@ -233,7 +227,7 @@ get_node_vars() {
 draw_dashboard() {
     clear
     echo -e "\033[1;36m=========================================================================================================\033[0m"
-    echo -e "\033[1;37m                                🛡️ 天网系统 V22+ (暴君执法大一统中心) 🛡️\033[0m"
+    echo -e "\033[1;37m                                🛡️ 天网系统 V22+ (极速秒测大一统中心) 🛡️\033[0m"
     echo -e "\033[1;36m=========================================================================================================\033[0m"
     printf " %-4s | %-4s | %-15s | %-15s | %-8s | %-8s | %-8s | %s\n" "通道" "战区" "锁定目标 IP" "当前真实 IP" "对外气闸" "总存活" "未漂移" "健康状态及行动指示"
     echo "---------------------------------------------------------------------------------------------------------"
@@ -242,7 +236,7 @@ draw_dashboard() {
     for N in 1 2 3; do
         (
             get_node_vars $N
-            CUR=$(curl -s4 --max-time 8 --socks5 127.0.0.1:$N_IN ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+            CUR=$(curl -s4 --max-time 6 --socks5 127.0.0.1:$N_IN ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
             echo "$CUR" > /tmp/skynet_cur_$N
         ) &
     done
@@ -279,7 +273,7 @@ action_draw() {
     
     clear
     echo -e "\033[1;36m========================================================\033[0m"
-    echo -e "              🐺 [S$N] 无极扩池安全抽卡引擎 (大道至简版)"
+    echo -e "              🐺 [S$N] 无极扩池安全抽卡引擎 (极速版)"
     echo -e "\033[1;36m========================================================\033[0m"
     echo -e "  [1] 🇺🇸 美国  [2] 🇬🇧 英国  [3] 🇯🇵 日本  [4] 🇸🇬 新加坡"
     echo -ne "\033[1;33m👉 选择目标战区 (默认当前 $N_REG): \033[0m"; read r
@@ -287,46 +281,55 @@ action_draw() {
     echo "$N_REG" > "$N_DIR/region.info"
 
     while true; do
-        # 1. 斩杀进程，仅清理 .cache，绝不碰账号！
         fuser -k -9 $N_IN/tcp >/dev/null 2>&1
         pkill -9 -f "127.0.0.1:$N_IN" 2>/dev/null
-        rm -rf "$N_DIR"/.cache 2>/dev/null
+        
+        # 👑 严格致敬 V9.5：绝对纯净的新沙盒
+        RUN="/tmp/skynet_run_$RANDOM"
+        mkdir -p "$RUN"; cd "$RUN"; export HOME="$RUN"
         
         EP=${ENDPOINTS[$RANDOM % ${#ENDPOINTS[@]}]}
-        echo "$EP" > "$N_DIR/current.endpoint"
+        echo "$EP" > "current.endpoint"
         
-        echo -ne "\r\033[K\033[1;36m⏳ 清空旧忆，带端点 ($EP) 重新拉起中...\033[0m"
-        cd "$N_DIR"; export HOME="$N_DIR"
-        
-        # 2. 括号脱壳，彻底消灭 Killed 报错
-        (nohup ./sbwpph -b 127.0.0.1:$N_IN --cfon --country $N_REG -4 --endpoint "$EP" >/dev/null 2>&1 &)
+        echo -ne "\r\033[K\033[1;36m⏳ 洗号重装中，端点 ($EP) 拉起...\033[0m"
+        # 使用绝对路径调用核心，在沙盒中生成纯净环境
+        setsid /etc/skynet/sub$N/sbwpph -b 127.0.0.1:$N_IN --cfon --country $N_REG -4 --endpoint "$EP" >/dev/null 2>&1 &
         
         sleep 2
         for i in {20..1}; do netstat -tlnp 2>/dev/null | grep -q ":$N_IN " && break; sleep 1; done
-        sleep 4
         
-        IP=""
-        for i in {1..3}; do
-            echo -ne "\r\033[K\033[1;35m⏳ 隧道搭建中，第 $i 次测网...\033[0m"
-            IP=$(curl -s4 --max-time 10 --socks5 127.0.0.1:$N_IN ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
-            [ -n "$IP" ] && break
-            sleep 3
-        done
+        # 👑 致敬 V9.5 极速逻辑：只等 2 秒，只测 1 发，不通即杀！
+        sleep 2
+        IP=$(curl -s4 -m 8 --socks5 127.0.0.1:$N_IN ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
         
-        if [ -z "$IP" ]; then continue; fi
+        if [ -z "$IP" ]; then 
+            fuser -k -9 $N_IN/tcp >/dev/null 2>&1
+            rm -rf "$RUN"
+            continue
+        fi
         
         echo -e "\n\033[1;32m🎯 命中极品 IP: \033[1;37m$IP\033[0m"
         echo -ne "\033[1;33m✨ 满意按 [Y] 挂锁，按回车杀掉重抽: \033[0m"; read k
         if [[ "$k" == "y" || "$k" == "Y" ]]; then
-            # 覆写黄金快照，保存成功连上的账号和端点
+            fuser -k -9 $N_IN/tcp >/dev/null 2>&1
+            
             rm -rf /etc/skynet/golden_$N/* /etc/skynet/golden_$N/.* 2>/dev/null
-            cp -a "$N_DIR/." /etc/skynet/golden_$N/ 2>/dev/null
+            cp -a "$RUN/." /etc/skynet/golden_$N/ 2>/dev/null
             
             echo "$IP" > "$N_DIR/s$N.lock"; date +%s > "$N_DIR/s$N.uptime"; date +%s > "$N_DIR/s$N.session"
             date +%s > "$N_DIR/s$N.boot"
             
-            (socat TCP4-LISTEN:$N_OUT,fork,reuseaddr TCP4:127.0.0.1:$N_IN >/dev/null 2>&1 &)
-            echo -e "\033[1;32m✅ 快照已存入金库！气闸接通！\033[0m"; sleep 2; break
+            rm -rf "$N_DIR"/.cache "$N_DIR"/*.db* "$N_DIR"/*.os 2>/dev/null
+            cp -a /etc/skynet/golden_$N/. "$N_DIR/" 2>/dev/null
+            
+            cd "$N_DIR"; export HOME="$N_DIR"
+            setsid ./sbwpph -b 127.0.0.1:$N_IN --cfon --country $N_REG -4 --endpoint "$EP" >/dev/null 2>&1 &
+            
+            setsid socat TCP4-LISTEN:$N_OUT,fork,reuseaddr TCP4:127.0.0.1:$N_IN >/dev/null 2>&1 &
+            echo -e "\033[1;32m✅ 快照已存入金库！气闸接通！\033[0m"; sleep 2; rm -rf "$RUN"; break
+        else
+            fuser -k -9 $N_IN/tcp >/dev/null 2>&1
+            rm -rf "$RUN"
         fi
     done
     rm -f "$N_DIR/s$N.manual" 2>/dev/null
@@ -368,26 +371,22 @@ action_s4() {
         while [ $A -lt $SCAN_MAX ]; do
             ((A++)); echo -ne "\r\033[K🔍 [$A/$SCAN_MAX] 下网..."
             
-            # S4 打捞同样绝对不删账号！
             fuser -k -9 $IN_PORT/tcp >/dev/null 2>&1
             pkill -9 -f "127.0.0.1:$IN_PORT" 2>/dev/null
-            rm -rf $DIR/.cache 2>/dev/null
+            
+            # 👑 极速沙盒打捞，绝不拖泥带水
+            RUN="/tmp/skynet_s4_$RANDOM"
+            mkdir -p "$RUN"; cd "$RUN"; export HOME="$RUN"
             
             EP=${ENDPOINTS[$RANDOM % ${#ENDPOINTS[@]}]}
-            cd "$DIR"; export HOME="$DIR"
-            (nohup ./sbwpph -b 127.0.0.1:$IN_PORT --cfon --country $TR -4 --endpoint "$EP" >/dev/null 2>&1 &)
+            setsid /etc/skynet/sub4/sbwpph -b 127.0.0.1:$IN_PORT --cfon --country $TR -4 --endpoint "$EP" >/dev/null 2>&1 &
             
             sleep 2
             for i in {20..1}; do netstat -tlnp 2>/dev/null | grep -q ":$IN_PORT " && break; sleep 1; done
-            sleep 4
             
-            IP=""
-            for i in {1..3}; do
-                echo -ne "\r\033[K\033[1;35m⏳ 潜水员憋气中，第 $i 次测网...\033[0m"
-                IP=$(curl -s4 --max-time 10 --socks5 127.0.0.1:$IN_PORT ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
-                [ -n "$IP" ] && break
-                sleep 3
-            done
+            # 👑 极速测网，只发一枪，不中即杀！
+            sleep 2
+            IP=$(curl -s4 -m 8 --socks5 127.0.0.1:$IN_PORT ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
 
             if [ -n "$IP" ]; then
                 if grep -q "^${IP}$" "$BLACKLIST_FILE" 2>/dev/null; then echo -e "\n  ├─ 🚫 触发黑名单: $IP"
@@ -396,6 +395,7 @@ action_s4() {
             
             fuser -k -9 $IN_PORT/tcp >/dev/null 2>&1
             pkill -9 -f "127.0.0.1:$IN_PORT" 2>/dev/null
+            rm -rf "$RUN"
         done
         echo -e "\n\033[1;33m📊 打捞结束，获得 ${#VALID[@]} 个极品。\033[0m"
         
@@ -470,5 +470,5 @@ chmod +x /usr/bin/tw
 
 (crontab -l 2>/dev/null | grep -v "stability.log"; echo "0 4 * * * echo \"\$(date '+[%m-%d %H:%M:%S]') 🚀 === 凌晨 4:00 重置，引导每日快照回档 ===\" > /etc/skynet/stability.log && /sbin/reboot") | crontab -
 
-echo -e "\n\033[1;32m🎉 天网 V22+ 部署完毕！清除画蛇添足的废话，全面致敬极简真理！\033[0m"
-echo -e "\033[1;37m👉 终端输入 \033[1;36mtw\033[1;37m，去体验像手搓一样丝滑的抽卡吧！\033[0m"
+echo -e "\n\033[1;32m🎉 天网 V22+ 部署完毕！抛弃复杂体系，全面回归暴君极简内核！\033[0m"
+echo -e "\033[1;37m👉 终端输入 \033[1;36mtw\033[1;37m 享受零报错秒测抽卡！\033[0m"
