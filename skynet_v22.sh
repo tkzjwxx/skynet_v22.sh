@@ -1,25 +1,38 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ 终极大一统版 (修复抽卡误杀提示与耐心寻路版)
+# 天网系统 V22+ (纯净解耦版：前置条件自行安装，脚本仅负责裂变与守护)
 # ====================================================================
 clear
 echo -e "\033[1;36m=================================================================\033[0m"
-echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (端口反向追踪接管版) 🛡️\033[0m"
+echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (纯净环境嗅探版) 🛡️\033[0m"
 echo -e "\033[1;36m=================================================================\033[0m"
-echo -e "  \033[1;32m[1]\033[0m 🚀 部署天网 (监听 40000 端口，自动抓取赛风核心)"
-echo -e "  \033[1;31m[2]\033[0m 🗑️ 彻底卸载天网 (清空所有残留，保留 WARP)"
+echo -e "\033[1;33m[前置要求] 执行安装前，请确保您已手动完成以下两步：\033[0m"
+echo -e "  1. 已安装 WARP (VPS 必须已具备 IPv4 出口能力)。"
+echo -e "  2. 已通过第三方脚本安装了包含赛风的协议，且\033[1;31m端口必须设为 40000\033[0m。"
+echo -e "\033[1;36m-----------------------------------------------------------------\033[0m"
+echo -e "  \033[1;32m[1]\033[0m 🚀 嗅探环境并部署天网 (自动抓取 40000 端口核心进行重组)"
+echo -e "  \033[1;31m[2]\033[0m 🗑️ 彻底卸载天网 (清空所有残留进程和文件，\033[1;32m保留 WARP\033[0m)"
 echo -e "  \033[1;33m[0]\033[0m 🚪 退出"
 echo -e "\033[1;36m=================================================================\033[0m"
 read -p "👉 请选择操作序号: " menu_choice
 
+# ====================================================================
+# 【卸载模块】: 彻底净化环境
+# ====================================================================
 if [ "$menu_choice" == "2" ]; then
     echo -e "\n\033[1;31m⚠️ 正在启动【天网自毁清洗程序】...\033[0m"
+    # 1. 停止所有服务
     systemctl stop sing-box front-box w_master sl1 sl2 sl3 2>/dev/null
     systemctl disable sing-box front-box w_master 2>/dev/null
-    pkill -9 -f sbwpph; pkill -9 -f sing-box; pkill -9 -f front-box; pkill -9 -f w_master; pkill -9 -f sl1
+    # 2. 物理斩杀所有可能残留的幽灵进程
+    pkill -9 -f sbwpph; pkill -9 -f sing-box; pkill -9 -f front-box; pkill -9 -f w_master; pkill -9 -f sl1; pkill -9 -f sl2; pkill -9 -f sl3
+    # 3. 删除所有相关目录和文件
     rm -rf /etc/s-box /usr/bin/tw /usr/bin/w_master /etc/systemd/system/front-box.service /etc/systemd/system/w_master.service /etc/systemd/system/sing-box.service
+    # 4. 刷新系统服务
+    systemctl daemon-reload
+    # 5. 清理定时任务中的天网重置和勇哥原版任务
     crontab -l 2>/dev/null | grep -v "stability.log" | grep -v "sb.sh" | grep -v "sing-box" | crontab -
-    echo -e "\033[1;32m🎉 卸载完毕！系统已恢复纯净状态 (WARP未触碰)。\033[0m"
+    echo -e "\033[1;32m🎉 卸载完毕！系统已恢复纯净状态 (您的 WARP 完全未受影响)。\033[0m"
     exit 0
 elif [ "$menu_choice" == "0" ]; then
     exit 0
@@ -28,63 +41,58 @@ elif [ "$menu_choice" != "1" ]; then
 fi
 
 clear
-echo -e "\033[1;31m🔥 正在执行【天网 V22+】端口追踪接管流...\033[0m"
+echo -e "\033[1;31m🔥 正在执行【天网 V22+】环境嗅探与重构部署...\033[0m"
 
 # ====================================================================
-# 0. 前置打底：WARP 介入与强心针注入
+# 1. 前置条件检测 (WARP IPv4 与 依赖包)
 # ====================================================================
-echo -e "\n\033[1;33m[阶段 0] 环境初始化与防卡死补丁注入\033[0m"
-echo -e "\033[1;36m👉 如果您已经成功安装过全局 WARP (已获取 IPv4)，请直接按【回车键】跳过此步！\033[0m"
-read -t 8 -p "👉 否则，输入 'y' 呼出 fscarmen 的 WARP 菜单进行安装: " run_warp
-if [[ "$run_warp" == "y" || "$run_warp" == "Y" ]]; then
-    wget -qO warp_menu.sh https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && chmod +x warp_menu.sh && bash warp_menu.sh
-    rm -f warp_menu.sh
-    echo -e "\n\033[1;35m⏸️ 探测到 WARP 部署结束，主脚本恢复执行...\033[0m"
-fi
+echo -e "\n\033[1;33m[阶段 1] 正在校验前置环境...\033[0m"
 
-echo -e "⏳ 正在安装基础依赖与随机数发生器 (防卡死神药)..."
 apt-get update -y >/dev/null 2>&1
 apt-get install -y curl wget socat net-tools psmisc jq unzip tar openssl cron nano haveged rng-tools >/dev/null 2>&1
 systemctl enable --now haveged >/dev/null 2>&1
 
-# ====================================================================
-# 1. 降维打击：通过 40000 端口反向追踪核心位置
-# ====================================================================
-echo -e "\n\033[1;33m[阶段 1] 启动天网雷达：全域监听 40000 端口...\033[0m"
-
-while true; do
-    if netstat -tlnp 2>/dev/null | grep -q ":40000 "; then
-        TARGET_PID=$(netstat -tlnp 2>/dev/null | grep ":40000 " | awk '{print $7}' | cut -d'/' -f1 | head -n 1)
-        if [ -n "$TARGET_PID" ]; then
-            CORE_FILE=$(readlink -f /proc/$TARGET_PID/exe)
-            if [ -f "$CORE_FILE" ]; then
-                echo -e "\n\033[1;32m🎯 雷达锁定！\033[0m"
-                echo -e "\033[1;36m成功通过 40000 端口逆向追踪到赛风核心位置：\033[1;37m$CORE_FILE\033[0m"
-                cp "$CORE_FILE" /tmp/sbwpph_core || { echo "核心提取失败！"; exit 1; }
-                sleep 2
-                break
-            fi
-        fi
-    fi
-
-    echo -e "\r\033[K\033[1;33m⏳ 正在等待 40000 端口激活... \033[0m"
-    echo -e "\033[1;36m请执行以下操作：\033[0m"
-    echo -e "  1. 打开一个新的 SSH 终端窗口登录 VPS。"
-    echo -e "  2. 输入 \033[1;32msb\033[0m 进入勇哥的菜单。"
-    echo -e "  3. 安装包含赛风的协议 (如 14 -> Psiphon-VPN)。"
-    echo -e "  4. \033[1;31m关键：务必将主端口或对应端口设置为 40000！\033[0m"
-    echo -e "  5. 只要赛风在那边启动，本窗口的雷达会\033[1;32m瞬间自动识别并接管\033[0m，无需您操作！"
-    echo -e "\033[1;90m(提示: 即使您现在退出，稍后装完再重新运行本脚本，也能秒接管)\033[0m\033[3A"
-    sleep 5
-done
-
-echo -e "\n\n\n\n\033[1;35m🚀 核心抓取完毕，天网劫持重构全功率启动！\033[0m"
+echo -ne "⏳ 检查 IPv4 (WARP) 连通性... "
+IPV4=$(curl -s4 -m 5 api.ipify.org)
+if [ -z "$IPV4" ]; then
+    echo -e "\033[1;31m[失败]\033[0m"
+    echo -e "\033[1;41;37m 💀 致命错误：未检测到 IPv4 出口！\033[0m"
+    echo -e "👉 请先自行运行 fscarmen 脚本完成 WARP 安装后，再来运行本脚本。"
+    exit 1
+else
+    echo -e "\033[1;32m[通过] (IP: $IPV4)\033[0m"
+fi
 
 # ====================================================================
-# 2. 鸠占鹊巢：无损提取配置与裂变隔离
+# 2. 核心嗅探 (探测 40000 端口)
+# ====================================================================
+echo -ne "⏳ 检查 40000 端口及赛风核心... "
+if ! netstat -tlnp 2>/dev/null | grep -q ":40000 "; then
+    echo -e "\033[1;31m[失败]\033[0m"
+    echo -e "\033[1;41;37m 💀 致命错误：40000 端口未处于监听状态！\033[0m"
+    echo -e "👉 请先自行运行第三方脚本安装赛风，并\033[1;33m务必将端口设置为 40000\033[0m！"
+    exit 1
+fi
+
+TARGET_PID=$(netstat -tlnp 2>/dev/null | grep ":40000 " | awk '{print $7}' | cut -d'/' -f1 | head -n 1)
+CORE_FILE=$(readlink -f /proc/$TARGET_PID/exe)
+
+if [ -z "$CORE_FILE" ] || [ ! -f "$CORE_FILE" ]; then
+    echo -e "\033[1;31m[失败]\033[0m"
+    echo -e "❌ 端口虽在使用，但无法定位核心文件物理路径！"
+    exit 1
+fi
+echo -e "\033[1;32m[通过] (定位到核心: $CORE_FILE)\033[0m"
+
+echo -e "\n\033[1;35m🚀 环境校验全部通过！天网核心劫持程序全功率启动！\033[0m"
+sleep 2
+
+# ====================================================================
+# 3. 鸠占鹊巢：无损提取配置与裂变隔离
 # ====================================================================
 echo -e "\n\033[1;33m[阶段 2] 正在进行配置劫持与三核物理裂变...\033[0m"
 
+# 尝试从勇哥原配置中提取密码，找不到就随机生成
 USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | awk -F'"' '{print $4}')
 [ -z "$USER_PASS" ] && USER_PASS="Skynet_$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
 
@@ -96,15 +104,18 @@ VLESS_UUID=$(cat /proc/sys/kernel/random/uuid)
 echo -e "\033[1;32m🎯 配置确立！主入口端口: $PORT_S1，协议密码已保存。\033[0m"
 
 echo -e "⏳ 正在提取证书快照并斩断原进程..."
+cp "$CORE_FILE" /tmp/sbwpph_core || { echo "核心备份失败！"; exit 1; }
 cp /etc/s-box/cert.pem /tmp/cert.pem 2>/dev/null || openssl req -new -x509 -days 3650 -nodes -out /tmp/cert.pem -keyout /tmp/private.key -subj "/CN=bing.com" 2>/dev/null
 cp /etc/s-box/private.key /tmp/private.key 2>/dev/null
 
+# 暴力斩首接管
 systemctl stop sing-box w_master sl1 sl2 sl3 front-box 2>/dev/null
 systemctl disable sing-box w_master front-box 2>/dev/null
 kill -9 $TARGET_PID 2>/dev/null
 pkill -9 -f sbwpph 2>/dev/null
 pkill -9 -f sing-box 2>/dev/null
 
+# 清洗现场，建立我们的天网隔离区
 rm -rf /etc/s-box/*
 mkdir -p /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/blacklist
 mv /tmp/cert.pem /etc/s-box/hy2.crt
@@ -116,6 +127,7 @@ echo "jp.domain.com" > /etc/s-box/cf_s3.info
 echo "$VLESS_UUID" > /etc/s-box/vless_uuid.info
 echo "$USER_PASS" > /etc/s-box/hy2_pass.info
 
+# 分发核心给前端和三个后端
 cp /tmp/sbwpph_core /etc/s-box/front-box
 cp /tmp/sbwpph_core /etc/s-box/sub1/sbwpph
 cp /tmp/sbwpph_core /etc/s-box/sub2/sbwpph
@@ -123,7 +135,7 @@ cp /tmp/sbwpph_core /etc/s-box/sub3/sbwpph
 chmod +x /etc/s-box/front-box /etc/s-box/sub*/sbwpph
 
 # ====================================================================
-# 3. 部署前端路由 (动态端口构建)
+# 4. 部署前端路由 (多端口解耦分流)
 # ====================================================================
 cat << EOF > /etc/s-box/front.json
 {
@@ -163,7 +175,7 @@ EOF
 systemctl daemon-reload && systemctl enable --now front-box >/dev/null 2>&1
 
 # ====================================================================
-# 4. 后端猎犬 (时光倒流引擎) -> sl1, sl2, sl3
+# 5. 后端猎犬 (时光倒流引擎) -> sl1, sl2, sl3
 # ====================================================================
 for NODE in 1 2 3; do
     [ "$NODE" == "1" ] && { IN_PORT=2081; OUT_PORT=1081; DIR="/etc/s-box/sub1"; REG="US"; }
@@ -206,7 +218,7 @@ while true; do
     fi
 
     cd "\$WORK"; export HOME="\$WORK"
-    nohup ./sbwpph -b 127.0.0.1:\$IN_PORT --cfon --country \$REG -4 --endpoint "\$EP" >/dev/null 2>&1 &
+    nohup ./sbwpph -b 127.0.0.1:\$IN_PORT --cfon --country \$REG -4 --endpoint "\$EP" >/dev/null 2>&1 & disown
     
     sleep 10
     IP=""
@@ -236,7 +248,7 @@ EOF
 done
 
 # ====================================================================
-# 5. 大后台哨兵 (w_master)
+# 6. 大后台哨兵 (w_master)
 # ====================================================================
 cat > /usr/bin/w_master << 'EOF'
 #!/bin/bash
@@ -294,7 +306,7 @@ EOF
 systemctl daemon-reload && systemctl enable --now w_master >/dev/null 2>&1
 
 # ====================================================================
-# 6. 终极控制台 tw
+# 7. 终极控制台 tw
 # ====================================================================
 cat << 'EOF' > /usr/bin/tw
 #!/bin/bash
@@ -367,10 +379,9 @@ action_draw() {
         echo -ne "\r\033[K\033[1;36m⏳ 携带端点 ($EP) 盲抽洗牌中...\033[0m"
         cd "$N_DIR"; export HOME="$N_DIR"
         
-        # 🔥【修复核心】：增加 disown 脱离终端控制，防止打印 Killed 提示音！
+        # 使用 disown 阻止 Killed 打印
         nohup ./sbwpph -b 127.0.0.1:$N_IN --cfon --country $N_REG -4 --endpoint "$EP" >/dev/null 2>&1 & disown
         
-        # 🔥【修复核心】：增加耐心！初始等 12 秒，再进行 3 次 3 秒的探测，总计给足 21 秒的握手时间
         sleep 12
         IP=""
         for i in {1..3}; do
@@ -464,7 +475,7 @@ EOF
 chmod +x /usr/bin/tw
 
 # ====================================================================
-# 7. 系统自启机制与凌晨重置任务
+# 8. 系统自启机制与凌晨重置任务
 # ====================================================================
 (crontab -l 2>/dev/null | grep -v "stability.log"; echo "0 4 * * * echo \"\$(date '+[%m-%d %H:%M:%S]') 🚀 === 凌晨 4:00 重置，引导每日快照回档 ===\" > /etc/s-box/stability.log && /sbin/reboot") | crontab -
 
