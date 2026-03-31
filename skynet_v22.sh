@@ -1,6 +1,6 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ 终极大一统版 (借鸡生蛋架构 + 一键卸载引擎)
+# 天网系统 V22+ 终极大一统版 (双段式交互劫持 + 彻底物理隔离)
 # ====================================================================
 clear
 echo -e "\033[1;36m=================================================================\033[0m"
@@ -18,7 +18,6 @@ if [ "$menu_choice" == "2" ]; then
     systemctl disable sing-box front-box w_master 2>/dev/null
     pkill -9 -f sbwpph; pkill -9 -f front-box; pkill -9 -f w_master; pkill -9 -f sl1
     rm -rf /etc/s-box /usr/bin/tw /usr/bin/w_master /etc/systemd/system/front-box.service /etc/systemd/system/w_master.service /etc/systemd/system/sing-box.service
-    # 清理掉可能残留的定时任务
     crontab -l 2>/dev/null | grep -v "stability.log" | grep -v "sb.sh" | grep -v "sing-box" | crontab -
     echo -e "\033[1;32m🎉 卸载完毕！系统已恢复纯净状态 (WARP未触碰)。\033[0m"
     exit 0
@@ -46,35 +45,59 @@ apt-get update -y >/dev/null 2>&1
 apt-get install -y curl wget socat net-tools psmisc jq unzip tar openssl cron nano >/dev/null 2>&1
 
 # ====================================================================
-# 1. 借鸡生蛋：呼出勇哥脚本，获取第三方赛风核心
+# 1. 借鸡生蛋：呼出勇哥脚本，获取第三方赛风核心 (支持多段式交互)
 # ====================================================================
 echo -e "\n\033[1;33m[阶段 1] 借壳提取第三方核心...\033[0m"
-echo -e "\033[1;36m即将呼出勇哥的 Sing-box 官方脚本。请执行以下操作：\033[0m"
-echo -e "1. 选择安装一个包含【赛风】的协议 (如 Hysteria2 + Psiphon)。"
-echo -e "2. 端口可以设置成你喜欢的 (比如 \033[1;32m40000\033[0m)。"
-echo -e "3. \033[1;31m安装完成后，请务必退出勇哥的菜单，回到当前界面！\033[0m"
-read -p "👉 明白请按回车键启动勇哥脚本..." 
+echo -e "\033[1;36m即将呼出勇哥的 Sing-box 官方脚本。请注意：\033[0m"
+echo -e "1. 第一次运行可能只是【初始化环境】并安装默认协议。"
+echo -e "2. 退出后，我们会提示您，您可以再次呼出菜单，去添加【包含赛风的协议】。"
+echo -e "3. 请在添加时，将端口设置成你喜欢的 (比如 \033[1;32m40000\033[0m)。"
+read -p "👉 明白请按回车键启动勇哥脚本 (首次初始化)..." 
 
-# 运行勇哥脚本
+# 第一次运行勇哥脚本
 bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh)
 
-echo -e "\n\033[1;35m⏸️ 检测到您已退出勇哥脚本。天网核心劫持程序启动！\033[0m"
-read -p "👉 确认已成功安装了第一条赛风通道吗？按回车键继续劫持..."
+# 核心交互循环：应对勇哥脚本的分步安装机制
+while true; do
+    echo -e "\n\033[1;35m⏸️ 检测到您已退出勇哥脚本的菜单。\033[0m"
+    echo -e "\033[1;33m请问您是否已经成功安装了【带有赛风的协议】(如 Hysteria2+Psiphon) 并在面板里看到了它？\033[0m"
+    echo -e "  \033[1;36m[1]\033[0m 还没有，我要再次唤起 \033[1;32msb\033[0m 快捷菜单去安装赛风通道。"
+    echo -e "  \033[1;31m[2]\033[0m 是的，我已经彻底安装好了赛风通道！立刻开始天网劫持！"
+    read -p "👉 请选择 (1 或 2): " sub_choice
+    
+    if [ "$sub_choice" == "1" ]; then
+        if type sb >/dev/null 2>&1; then
+            sb
+        elif [ -f "/usr/bin/sb" ]; then
+            /usr/bin/sb
+        else
+            echo "找不到 sb 快捷命令，重新拉取原始脚本..."
+            bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh)
+        fi
+    elif [ "$sub_choice" == "2" ]; then
+        break
+    else
+        echo "❌ 输入错误，请选择 1 或 2。"
+    fi
+done
+
+echo -e "\n\033[1;35m🚀 赛风通道确认完毕，天网核心劫持程序全功率启动！\033[0m"
 
 # ====================================================================
 # 2. 鸠占鹊巢：提取配置与裂变隔离
 # ====================================================================
 echo -e "\n\033[1;33m[阶段 2] 正在进行配置劫持与三核物理裂变...\033[0m"
 
-# 检查核心是否真的下载到了
+# 严格校验：核心是否真的下载到了
 if [ ! -f "/etc/s-box/sbwpph" ]; then
-    echo -e "\033[1;41;37m 💀 致命错误：未在 /etc/s-box/ 找到 sbwpph 核心！您刚才可能没有正确安装包含赛风的协议。\033[0m"
+    echo -e "\033[1;41;37m 💀 致命错误：未在 /etc/s-box/ 找到 sbwpph 核心！\033[0m"
+    echo -e "您刚才可能没有正确安装包含赛风的协议（或者勇哥脚本更新改变了核心名字）。请卸载重试！"
     exit 1
 fi
 
-# 从勇哥生成的 sb.json 中智能提取用户设置的端口和密码
-USER_PORT=$(grep -Eo '"listen_port":[ \t]*[0-9]+' /etc/s-box/sb.json 2>/dev/null | head -n 1 | grep -Eo '[0-9]+')
-USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | head -n 1 | awk -F'"' '{print $4}')
+# 从勇哥生成的 sb.json 中智能提取用户设置的端口和密码 (极度谨慎的正则提取)
+USER_PORT=$(grep -Eo '"listen_port":[ \t]*[0-9]+' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | grep -Eo '[0-9]+')
+USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | awk -F'"' '{print $4}')
 
 # 容错处理：如果没提取到，给个默认值
 [ -z "$USER_PORT" ] && USER_PORT=40000
@@ -85,7 +108,7 @@ PORT_S2=$((USER_PORT + 1))
 PORT_S3=$((USER_PORT + 2))
 VLESS_UUID=$(cat /proc/sys/kernel/random/uuid)
 
-echo -e "\033[1;32m🎯 成功提取您的设置！起始端口: $PORT_S1，密码: 已获取。\033[0m"
+echo -e "\033[1;32m🎯 成功提取！主入口起始端口: $PORT_S1，协议密码: $USER_PASS。\033[0m"
 
 # 杀掉勇哥启动的服务，彻底接管
 systemctl stop sing-box 2>/dev/null
