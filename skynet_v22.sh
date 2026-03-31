@@ -1,10 +1,10 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ (V9.8沙盒秒测 + 免死金牌守护版)
+# 天网系统 V22+ (终极除虫 + 寻路强化 + 沙盒免死版)
 # ====================================================================
 clear
 echo -e "\033[1;36m=================================================================\033[0m"
-echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (沙盒引擎+免疫护甲版) 🛡️\033[0m"
+echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (寻路除虫重构版) 🛡️\033[0m"
 echo -e "\033[1;36m=================================================================\033[0m"
 echo -e "\033[1;33m[前置要求] 执行安装前，请确保您已手动完成以下两步：\033[0m"
 echo -e "  1. 已安装 WARP (VPS 必须已具备 IPv4 出口能力)。"
@@ -201,7 +201,7 @@ done
 systemctl daemon-reload
 
 # ====================================================================
-# 5. 后端猎犬 (V9.8 沙盒重构版)
+# 5. 后端猎犬 (V9.8 沙盒重构版 + 精准除僵尸)
 # ====================================================================
 for NODE in 1 2 3; do
     [ "$NODE" == "1" ] && { IN_PORT=2081; OUT_PORT=1081; DIR="/etc/s-box/sub1"; }
@@ -228,8 +228,8 @@ while true; do
     
     systemctl stop skynet-s\${NODE} 2>/dev/null
     fuser -k -9 "\$IN_PORT/tcp" >/dev/null 2>&1
+    pkill -9 -f "127.0.0.1:\$IN_PORT" 2>/dev/null
     
-    # 🚀 致敬 V9.8: 生成独立沙盒，彻底避开数据库锁死！
     RUN="\$WORK/tmp_\$RANDOM"
     mkdir -p \$RUN; cd \$RUN; export HOME=\$RUN
     
@@ -242,24 +242,25 @@ while true; do
         echo "\$EP" > "\$RUN/current.endpoint"
     fi
 
-    # 裸奔启动探测
     nohup /etc/s-box/sub\${NODE}/sbwpph -b 127.0.0.1:\$IN_PORT --cfon --country \$(cat \$WORK/region.info) -4 --endpoint "\$EP" >/dev/null 2>&1 & disown
     
-    # 🚀 致敬 V9.8: 端口秒测法！一旦检测到端口开了，立马去发 curl
     sleep 2
     for i in {20..1}; do netstat -tlnp 2>/dev/null | grep -q ":\$IN_PORT " && break; sleep 1; done
     
-    IP=\$(curl -s4 -m 8 --socks5 127.0.0.1:\$IN_PORT \${APIS[\$RANDOM % \${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+    # 关键修复：测到端口后，给足赛风建立隧道的握手时间！
+    sleep 5 
+    
+    # 关键修复：改用 --socks5-hostname 防止 DNS 解析短路
+    IP=\$(curl -s --max-time 10 --socks5-hostname 127.0.0.1:\$IN_PORT \${APIS[\$RANDOM % \${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
 
     if [ "\$IP" == "\$TARGET" ]; then
         fuser -k -9 "\$IN_PORT/tcp" >/dev/null 2>&1
+        pkill -9 -f "127.0.0.1:\$IN_PORT" 2>/dev/null
         rm -rf "\$WORK"/.cache "\$WORK"/*.db* "\$WORK"/*.os 2>/dev/null
         
-        # 将沙盒转化为正式工作环境
         cp -a \$RUN/. "\$WORK/"
         rm -rf \$RUN
         
-        # 🔥 免死金牌：颁发开机证明，60秒内哨兵绝对不准查杀！
         date +%s > "\$WORK/s\${NODE}.boot"
         
         systemctl start skynet-s\${NODE}
@@ -272,8 +273,8 @@ while true; do
         [ ! -f "\$WORK/s\${NODE}.session" ] && date +%s > "\$WORK/s\${NODE}.session"
         exit 0
     else
-        # 失败则摧毁沙盒，不留任何残骸
         fuser -k -9 "\$IN_PORT/tcp" >/dev/null 2>&1
+        pkill -9 -f "127.0.0.1:\$IN_PORT" 2>/dev/null
         rm -rf \$RUN
     fi
 done
@@ -282,7 +283,7 @@ EOF
 done
 
 # ====================================================================
-# 6. 大后台哨兵 (w_master 免疫误杀版)
+# 6. 大后台哨兵 (w_master)
 # ====================================================================
 cat > /usr/bin/w_master << 'EOF'
 #!/bin/bash
@@ -300,14 +301,13 @@ while true; do
         
         if [ -f "$WORK/s${NODE}.manual" ] || [ -f "$WORK/s${NODE}.disabled" ] || [ -f "$WORK/s${NODE}.hibernating" ]; then continue; fi
         
-        # 🔥 护城河：检测免死金牌，如果在 60 秒内刚启动，哨兵直接绕道，给足握手时间！
         if [ -f "$WORK/s${NODE}.boot" ]; then
             BOOT_TIME=$(cat "$WORK/s${NODE}.boot" 2>/dev/null)
             NOW=$(date +%s)
             if [ $((NOW - BOOT_TIME)) -lt 60 ]; then
                 continue
             else
-                rm -f "$WORK/s${NODE}.boot" # 超过60秒，免死金牌失效
+                rm -f "$WORK/s${NODE}.boot" 
             fi
         fi
 
@@ -315,7 +315,7 @@ while true; do
         TARGET=$(cat "$LOCK" | tr -d '[:space:]'); [ -z "$TARGET" ] && continue
         
         API=${APIS[$RANDOM % ${#APIS[@]}]}
-        CURRENT=$(curl -s4 -m 6 --socks5 127.0.0.1:$IN_PORT $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+        CURRENT=$(curl -s --max-time 10 --socks5-hostname 127.0.0.1:$IN_PORT $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
         
         if [[ -n "$CURRENT" && "$CURRENT" == "$TARGET" ]]; then
             if ! netstat -tlnp 2>/dev/null | grep -q ":$OUT_PORT "; then
@@ -324,10 +324,9 @@ while true; do
                 [ ! -f "$WORK/s${NODE}.session" ] && date +%s > "$WORK/s${NODE}.session"
             fi
         elif ! pgrep -f "/etc/s-box/sl${NODE}" > /dev/null; then
-            # 宽限期：给 15 秒再查一次
             if [ -z "$CURRENT" ]; then
                 sleep 15
-                CURRENT=$(curl -s4 -m 6 --socks5 127.0.0.1:$IN_PORT $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+                CURRENT=$(curl -s --max-time 10 --socks5-hostname 127.0.0.1:$IN_PORT $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
             fi
 
             if [[ -n "$CURRENT" && "$CURRENT" != "$TARGET" ]] || [ -z "$CURRENT" ]; then
@@ -354,7 +353,7 @@ EOF
 systemctl enable --now w_master >/dev/null 2>&1
 
 # ====================================================================
-# 7. 终极控制台 tw (含沙盒抽卡与S4极速打捞)
+# 7. 终极控制台 tw
 # ====================================================================
 cat << 'EOF' > /usr/bin/tw
 #!/bin/bash
@@ -385,7 +384,7 @@ draw_dashboard() {
     for N in 1 2 3; do
         get_node_vars $N
         TAR=$(cat "$N_DIR/s$N.lock" 2>/dev/null)
-        CUR=$(curl -s4 -m 3 --socks5 127.0.0.1:$N_IN ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+        CUR=$(curl -s --max-time 6 --socks5-hostname 127.0.0.1:$N_IN ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
         if netstat -tlnp 2>/dev/null | grep -q ":$N_OUT "; then G_R="🟢开启"; else G_R="🔴截断"; fi
         
         UP_TOT="--:--:--"; UP_SES="--:--:--"
@@ -423,6 +422,7 @@ action_draw() {
     while true; do
         systemctl stop "$N_SVC" 2>/dev/null
         fuser -k -9 "$N_IN/tcp" >/dev/null 2>&1
+        pkill -9 -f "127.0.0.1:$N_IN" 2>/dev/null
         
         RUN="$N_DIR/tmp_$RANDOM"
         mkdir -p $RUN; cd $RUN; export HOME=$RUN
@@ -433,14 +433,15 @@ action_draw() {
         echo -ne "\r\033[K\033[1;36m⏳ 沙盒构建完毕，端点 ($EP) 盲抽中...\033[0m"
         nohup /etc/s-box/sub$N/sbwpph -b 127.0.0.1:$N_IN --cfon --country $N_REG -4 --endpoint "$EP" >/dev/null 2>&1 & disown
         
-        # 🚀 端口秒测法
         sleep 2
         for i in {20..1}; do netstat -tlnp 2>/dev/null | grep -q ":$N_IN " && break; sleep 1; done
         
-        IP=$(curl -s4 -m 8 --socks5 127.0.0.1:$N_IN ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+        sleep 5
+        IP=$(curl -s --max-time 10 --socks5-hostname 127.0.0.1:$N_IN ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
         
         if [ -z "$IP" ]; then 
             fuser -k -9 "$N_IN/tcp" >/dev/null 2>&1
+            pkill -9 -f "127.0.0.1:$N_IN" 2>/dev/null
             rm -rf $RUN
             continue
         fi
@@ -449,6 +450,8 @@ action_draw() {
         echo -ne "\033[1;33m✨ 满意按 [Y] 挂锁，按回车销毁沙盒重抽: \033[0m"; read k
         if [[ "$k" == "y" || "$k" == "Y" ]]; then
             fuser -k -9 "$N_IN/tcp" >/dev/null 2>&1
+            pkill -9 -f "127.0.0.1:$N_IN" 2>/dev/null
+            
             rm -rf "$N_DIR/golden_snapshot"; mkdir -p "$N_DIR/golden_snapshot"
             cp -a $RUN/. "$N_DIR/golden_snapshot/"
             rm -rf $RUN
@@ -459,7 +462,6 @@ action_draw() {
             rm -rf "$N_DIR"/.cache "$N_DIR"/*.db* "$N_DIR"/*.os 2>/dev/null
             cp -a "$N_DIR/golden_snapshot/." "$N_DIR/"
             
-            # 🔥 颁发免死金牌并启动气闸，回到面板瞬间变绿
             date +%s > "$N_DIR/s$N.boot"
             systemctl start "$N_SVC"
             fuser -k -9 "$N_OUT/tcp" >/dev/null 2>&1
@@ -468,6 +470,7 @@ action_draw() {
             echo -e "\033[1;32m✅ 快照已封印！(底层已交由 Systemd 永久守护)\033[0m"; sleep 2; break
         else
             fuser -k -9 "$N_IN/tcp" >/dev/null 2>&1
+            pkill -9 -f "127.0.0.1:$N_IN" 2>/dev/null
             rm -rf $RUN
         fi
     done
@@ -494,7 +497,7 @@ action_toggle() {
 }
 
 # ====================================================================
-# 🔥 幽灵斥候 S4：深海打捞旁路引擎 (沙盒防锁版)
+# 🔥 幽灵斥候 S4：深海打捞旁路引擎 (绝不留僵尸版)
 # ====================================================================
 action_s4() {
     DIR="/etc/s-box/sub4"; BLACKLIST_FILE="/etc/s-box/blacklist/bad_ips.txt"; SVC="skynet-s4"; IN_PORT=2084; touch "$BLACKLIST_FILE"
@@ -520,7 +523,10 @@ action_s4() {
         while [ $A -lt $SCAN_MAX ]; do
             ((A++)); echo -ne "\r\033[K🔍 [$A/$SCAN_MAX] 下网..."
             
+            # 【关键修复】彻底清理可能的僵尸进程
             fuser -k -9 "$IN_PORT/tcp" >/dev/null 2>&1
+            pkill -9 -f "127.0.0.1:$IN_PORT" 2>/dev/null
+            
             RUN="$DIR/tmp_$RANDOM"
             mkdir -p $RUN; cd $RUN; export HOME=$RUN
             
@@ -532,7 +538,16 @@ action_s4() {
             sleep 2
             for i in {20..1}; do netstat -tlnp 2>/dev/null | grep -q ":$IN_PORT " && break; sleep 1; done
             
-            IP=$(curl -s4 -m 8 --socks5 127.0.0.1:$IN_PORT ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+            # 【关键修复】必须等 5 秒，让隧道建好！纯IPv6必须用 --socks5-hostname！
+            sleep 5
+            IP=""
+            for i in {1..3}; do
+                API=${APIS[$RANDOM % ${#APIS[@]}]}
+                IP=$(curl -s --max-time 10 --socks5-hostname 127.0.0.1:$IN_PORT $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+                if [ -n "$IP" ]; then break; fi
+                echo -ne "\r\033[K\033[1;35m⏳ 潜水员憋气中，第 $i 次重试测网...\033[0m"
+                sleep 4
+            done
 
             if [ -n "$IP" ]; then
                 if grep -q "^${IP}$" "$BLACKLIST_FILE" 2>/dev/null; then echo -e "\n  ├─ 🚫 触发黑名单: $IP"
@@ -540,6 +555,7 @@ action_s4() {
             else echo -e "\n  ├─ \033[1;31m❌ 寻路超时 (已自动换网)\033[0m"; fi
             
             fuser -k -9 "$IN_PORT/tcp" >/dev/null 2>&1
+            pkill -9 -f "127.0.0.1:$IN_PORT" 2>/dev/null
             rm -rf $RUN
         done
         echo -e "\n\033[1;33m📊 打捞结束，获得 ${#VALID[@]} 个极品。\033[0m"
@@ -579,10 +595,6 @@ action_cf_nodes() {
     CF1=$(cat /etc/s-box/cf_s1.info); CF2=$(cat /etc/s-box/cf_s2.info); CF3=$(cat /etc/s-box/cf_s3.info)
     UUID=$(cat /etc/s-box/vless_uuid.info); PASS=$(cat /etc/s-box/hy2_pass.info)
     
-    P1=$(grep -oP '"listen_port":\s*\K\d+' /etc/s-box/front.json | sed -n '1p')
-    P2=$(grep -oP '"listen_port":\s*\K\d+' /etc/s-box/front.json | sed -n '2p')
-    P3=$(grep -oP '"listen_port":\s*\K\d+' /etc/s-box/front.json | sed -n '3p')
-    
     echo -e "\033[1;35m【第二步：提取 VLESS 节点 (Argo CDN 分流)】\033[0m"
     gen_v() { echo "vless://$(echo -n "$UUID@$2:443?encryption=none&security=tls&sni=$2&type=ws&host=$2&path=/?ed=2048#$1")"; }
     echo -e "🇺🇸 S1: \033[40;32m $(gen_v "SkyNet-CF-S1" "$CF1") \033[0m"
@@ -590,9 +602,9 @@ action_cf_nodes() {
     echo -e "🇯🇵 S3: \033[40;32m $(gen_v "SkyNet-CF-S3" "$CF3") \033[0m"
 
     echo -e "\n\033[1;35m【第三步：提取 Hysteria2 节点 (纯 IPv6 穿透直连)】\033[0m"
-    echo -e "🇺🇸 S1: \033[40;32m hysteria2://$PASS@[$IP]:$P1/?sni=bing.com&insecure=1#SkyNet-HY2-S1 \033[0m"
-    echo -e "🇬🇧 S2: \033[40;32m hysteria2://$PASS@[$IP]:$P2/?sni=bing.com&insecure=1#SkyNet-HY2-S2 \033[0m"
-    echo -e "🇯🇵 S3: \033[40;32m hysteria2://$PASS@[$IP]:$P3/?sni=bing.com&insecure=1#SkyNet-HY2-S3 \033[0m"
+    echo -e "🇺🇸 S1: \033[40;32m hysteria2://$PASS@[$IP]:40000/?sni=bing.com&insecure=1#SkyNet-HY2-S1 \033[0m"
+    echo -e "🇬🇧 S2: \033[40;32m hysteria2://$PASS@[$IP]:40001/?sni=bing.com&insecure=1#SkyNet-HY2-S2 \033[0m"
+    echo -e "🇯🇵 S3: \033[40;32m hysteria2://$PASS@[$IP]:40002/?sni=bing.com&insecure=1#SkyNet-HY2-S3 \033[0m"
     echo -e "\033[1;36m=================================================================\033[0m"
     read -p "按回车键返回大盘..."
 }
@@ -628,5 +640,5 @@ chmod +x /usr/bin/tw
 
 nohup /usr/bin/w_master >/dev/null 2>&1 &
 
-echo -e "\n\033[1;32m🎉 天网系统 V22+ 终极版部署完毕！沙盒引擎与免死金牌机制已启动！\033[0m"
-echo -e "\033[1;37m👉 请在终端输入 \033[1;36mtw\033[1;37m 享受秒抽体验！\033[0m"
+echo -e "\n\033[1;32m🎉 天网系统 V22+ 终极版部署完毕！精准除虫与寻路重构已激活！\033[0m"
+echo -e "\033[1;37m👉 请在终端输入 \033[1;36mtw\033[1;37m 开始享受稳定打捞！\033[0m"
