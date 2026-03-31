@@ -1,9 +1,35 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ 终极大一统版 (解决卡死与域名逻辑)
+# 天网系统 V22+ 终极大一统版 (借鸡生蛋架构 + 一键卸载引擎)
 # ====================================================================
 clear
-echo -e "\033[1;31m🔥 正在执行【天网 V22+ 终极大一统版】全量创世重筑...\033[0m"
+echo -e "\033[1;36m=================================================================\033[0m"
+echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (终极重构版) 🛡️\033[0m"
+echo -e "\033[1;36m=================================================================\033[0m"
+echo -e "  \033[1;32m[1]\033[0m 🚀 部署天网 (含智能劫持第三方赛风核心)"
+echo -e "  \033[1;31m[2]\033[0m 🗑️ 彻底卸载天网 (清空所有残留，保留 WARP)"
+echo -e "  \033[1;33m[0]\033[0m 🚪 退出"
+echo -e "\033[1;36m=================================================================\033[0m"
+read -p "👉 请选择操作序号: " menu_choice
+
+if [ "$menu_choice" == "2" ]; then
+    echo -e "\n\033[1;31m⚠️ 正在启动【天网自毁清洗程序】...\033[0m"
+    systemctl stop sing-box front-box w_master sl1 sl2 sl3 2>/dev/null
+    systemctl disable sing-box front-box w_master 2>/dev/null
+    pkill -9 -f sbwpph; pkill -9 -f front-box; pkill -9 -f w_master; pkill -9 -f sl1
+    rm -rf /etc/s-box /usr/bin/tw /usr/bin/w_master /etc/systemd/system/front-box.service /etc/systemd/system/w_master.service /etc/systemd/system/sing-box.service
+    # 清理掉可能残留的定时任务
+    crontab -l 2>/dev/null | grep -v "stability.log" | grep -v "sb.sh" | grep -v "sing-box" | crontab -
+    echo -e "\033[1;32m🎉 卸载完毕！系统已恢复纯净状态 (WARP未触碰)。\033[0m"
+    exit 0
+elif [ "$menu_choice" == "0" ]; then
+    exit 0
+elif [ "$menu_choice" != "1" ]; then
+    echo "❌ 输入错误，已退出。"; exit 1
+fi
+
+clear
+echo -e "\033[1;31m🔥 正在执行【天网 V22+】创世重筑...\033[0m"
 
 # ====================================================================
 # 0. 前置打底：fscarmen WARP 介入 (纯 IPv6 救星)
@@ -13,94 +39,93 @@ echo -e "\033[1;36m👉 如果您已经成功安装过全局 WARP (已获取 IPv
 read -t 10 -p "👉 否则，输入 'y' 呼出 fscarmen 的 WARP 菜单进行安装: " run_warp
 if [[ "$run_warp" == "y" || "$run_warp" == "Y" ]]; then
     wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh
-    echo -e "\n\033[1;35m⏸️ 主脚本恢复执行...\033[0m"
+    echo -e "\n\033[1;35m⏸️ 探测到 WARP 部署结束，主脚本恢复执行...\033[0m"
 fi
 
-# ====================================================================
-# 1. 深度环境清理 & 物理引擎保护
-# ====================================================================
-echo -e "\n\033[1;33m[阶段 1] 正在进行深度环境清理与依赖安装...\033[0m"
-systemctl stop sing-box front-box w_master sl1 sl2 sl3 2>/dev/null
-killall -9 sbwpph sing-box w_master 2>/dev/null
-
-# 🚨 【核心防卡死保险】：如果已经存在勇哥的第三方赛风核心，立刻备份！防止被 rm 删除！
-if [ -f "/etc/s-box/sbwpph" ]; then
-    echo -e "\033[1;32m📦 检测到系统中已存在 sbwpph 核心，正在紧急备份...\033[0m"
-    cp -f /etc/s-box/sbwpph /tmp/sbwpph_backup
-fi
-
-rm -rf /etc/s-box /usr/bin/tw /usr/bin/w_master /etc/systemd/system/front-box.service /etc/systemd/system/w_master.service
 apt-get update -y >/dev/null 2>&1
 apt-get install -y curl wget socat net-tools psmisc jq unzip tar openssl cron nano >/dev/null 2>&1
 
-mkdir -p /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/blacklist
-cd /etc/s-box
+# ====================================================================
+# 1. 借鸡生蛋：呼出勇哥脚本，获取第三方赛风核心
+# ====================================================================
+echo -e "\n\033[1;33m[阶段 1] 借壳提取第三方核心...\033[0m"
+echo -e "\033[1;36m即将呼出勇哥的 Sing-box 官方脚本。请执行以下操作：\033[0m"
+echo -e "1. 选择安装一个包含【赛风】的协议 (如 Hysteria2 + Psiphon)。"
+echo -e "2. 端口可以设置成你喜欢的 (比如 \033[1;32m40000\033[0m)。"
+echo -e "3. \033[1;31m安装完成后，请务必退出勇哥的菜单，回到当前界面！\033[0m"
+read -p "👉 明白请按回车键启动勇哥脚本..." 
 
-# 生成随机凭证 (安装时静默生成，不打扰用户)
+# 运行勇哥脚本
+bash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh)
+
+echo -e "\n\033[1;35m⏸️ 检测到您已退出勇哥脚本。天网核心劫持程序启动！\033[0m"
+read -p "👉 确认已成功安装了第一条赛风通道吗？按回车键继续劫持..."
+
+# ====================================================================
+# 2. 鸠占鹊巢：提取配置与裂变隔离
+# ====================================================================
+echo -e "\n\033[1;33m[阶段 2] 正在进行配置劫持与三核物理裂变...\033[0m"
+
+# 检查核心是否真的下载到了
+if [ ! -f "/etc/s-box/sbwpph" ]; then
+    echo -e "\033[1;41;37m 💀 致命错误：未在 /etc/s-box/ 找到 sbwpph 核心！您刚才可能没有正确安装包含赛风的协议。\033[0m"
+    exit 1
+fi
+
+# 从勇哥生成的 sb.json 中智能提取用户设置的端口和密码
+USER_PORT=$(grep -Eo '"listen_port":[ \t]*[0-9]+' /etc/s-box/sb.json 2>/dev/null | head -n 1 | grep -Eo '[0-9]+')
+USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | head -n 1 | awk -F'"' '{print $4}')
+
+# 容错处理：如果没提取到，给个默认值
+[ -z "$USER_PORT" ] && USER_PORT=40000
+[ -z "$USER_PASS" ] && USER_PASS="Skynet_$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
+
+PORT_S1=$USER_PORT
+PORT_S2=$((USER_PORT + 1))
+PORT_S3=$((USER_PORT + 2))
 VLESS_UUID=$(cat /proc/sys/kernel/random/uuid)
-HY2_PASS="Skynet_$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
+
+echo -e "\033[1;32m🎯 成功提取您的设置！起始端口: $PORT_S1，密码: 已获取。\033[0m"
+
+# 杀掉勇哥启动的服务，彻底接管
+systemctl stop sing-box 2>/dev/null
+systemctl disable sing-box 2>/dev/null
+pkill -9 -f sbwpph 2>/dev/null
+
+# 备份核心与证书
+cp /etc/s-box/sbwpph /tmp/sbwpph_core
+cp /etc/s-box/cert.pem /tmp/cert.pem 2>/dev/null || openssl req -new -x509 -days 3650 -nodes -out /tmp/cert.pem -keyout /tmp/private.key -subj "/CN=bing.com" 2>/dev/null
+cp /etc/s-box/private.key /tmp/private.key 2>/dev/null
+
+# 清洗现场，建立我们的天网隔离区
+rm -rf /etc/s-box/*
+mkdir -p /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/blacklist
+mv /tmp/cert.pem /etc/s-box/hy2.crt
+mv /tmp/private.key /etc/s-box/hy2.key
+
 echo "us.domain.com" > /etc/s-box/cf_s1.info
 echo "uk.domain.com" > /etc/s-box/cf_s2.info
 echo "jp.domain.com" > /etc/s-box/cf_s3.info
 echo "$VLESS_UUID" > /etc/s-box/vless_uuid.info
-echo "$HY2_PASS" > /etc/s-box/hy2_pass.info
+echo "$USER_PASS" > /etc/s-box/hy2_pass.info
+
+# 分发核心给前端和三个后端
+cp /tmp/sbwpph_core /etc/s-box/front-box
+cp /tmp/sbwpph_core /etc/s-box/sub1/sbwpph
+cp /tmp/sbwpph_core /etc/s-box/sub2/sbwpph
+cp /tmp/sbwpph_core /etc/s-box/sub3/sbwpph
+chmod +x /etc/s-box/front-box /etc/s-box/sub*/sbwpph
 
 # ====================================================================
-# 2. 引擎智能拉取 (官方前端 + 勇哥后端)
+# 3. 部署前端路由 (动态端口构建)
 # ====================================================================
-echo -e "\n\033[1;33m[阶段 2] 智能拉取双核物理引擎...\033[0m"
-
-# 拉取官方核心 (作为前端路由门面)
-echo -e "\033[1;36m⏳ 正在拉取官方 Sing-box 前端接客引擎...\033[0m"
-S_URL=$(curl -sL --connect-timeout 5 -A "Mozilla/5.0" "https://api.github.com/repos/SagerNet/sing-box/releases/latest" | grep -o 'https://[^"]*linux-amd64\.tar\.gz' | head -n 1)
-[ -z "$S_URL" ] && S_URL="https://github.com/SagerNet/sing-box/releases/download/v1.10.1/sing-box-1.10.1-linux-amd64.tar.gz"
-curl -sL -o /tmp/sbox.tar.gz "$S_URL"
-tar -xzf /tmp/sbox.tar.gz -C /tmp/ && mv -f /tmp/sing-box-*/sing-box /etc/s-box/front-box
-chmod +x /etc/s-box/front-box
-
-# 🚨 【智能获取勇哥 sbwpph 核心】 (绝不再卡死)
-echo -e "\033[1;36m⏳ 正在智能解析勇哥脚本中的第三方最新核心...\033[0m"
-# 先尝试从勇哥的脚本源码里正则提取最新直链
-YG_SCRIPT=$(curl -sL https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh)
-CORE_URL=$(echo "$YG_SCRIPT" | grep -Eo 'https://[^"[:space:]]*sbwpph-linux-amd64[^"[:space:]]*' | head -n 1)
-
-[ -z "$CORE_URL" ] && CORE_URL="https://github.com/yonggekkk/sing-box-yg/raw/main/Core/sbwpph-linux-amd64"
-curl -sL -o /tmp/sbwpph "$CORE_URL"
-
-# 校验下载是否成功 (大小需 > 5MB)
-if [ ! -s /tmp/sbwpph ] || [ $(stat -c%s /tmp/sbwpph 2>/dev/null || echo 0) -lt 5000000 ]; then
-    if [ -f "/tmp/sbwpph_backup" ]; then
-        echo -e "\033[1;33m⚠️ 在线拉取失败，安全回退：使用您本地已安装的 sbwpph 核心！\033[0m"
-        cp -f /tmp/sbwpph_backup /tmp/sbwpph
-    else
-        echo -e "\n\033[1;41;37m 💀 致命错误：无法获取勇哥带有 Psiphon 的 sbwpph 核心！ \033[0m"
-        echo -e "\033[1;32m👉 终极解决方案 (仅需一次)：\033[0m"
-        echo -e "请先手动运行勇哥的官方脚本：\n \033[1;36mbash <(curl -Ls https://raw.githubusercontent.com/yonggekkk/sing-box-yg/main/sb.sh)\033[0m"
-        echo -e "随便选择安装一个包含赛风的协议 (为了让它把核心下载到你的 VPS)，完成后退出。"
-        echo -e "然后再重新拉取运行我的 Github 脚本即可，系统会自动识别并保留核心！"
-        exit 1
-    fi
-fi
-
-# 分发到三核物理隔离区
-chmod +x /tmp/sbwpph
-cp /tmp/sbwpph /etc/s-box/sub1/sbwpph
-cp /tmp/sbwpph /etc/s-box/sub2/sbwpph
-cp /tmp/sbwpph /etc/s-box/sub3/sbwpph
-
-# ====================================================================
-# 3. 部署前端路由 (Sing-box 多端口解耦分流)
-# ====================================================================
-openssl ecparam -genkey -name prime256v1 -out /etc/s-box/hy2.key 2>/dev/null
-openssl req -new -x509 -days 3650 -key /etc/s-box/hy2.key -out /etc/s-box/hy2.crt -subj "/CN=bing.com" 2>/dev/null
-
 cat << EOF > /etc/s-box/front.json
 {
   "log": {"level": "fatal"},
   "inbounds": [
-    { "type": "hysteria2", "tag": "hy2-in-1", "listen": "::", "listen_port": 8443, "users": [{"password": "$HY2_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
-    { "type": "hysteria2", "tag": "hy2-in-2", "listen": "::", "listen_port": 8444, "users": [{"password": "$HY2_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
-    { "type": "hysteria2", "tag": "hy2-in-3", "listen": "::", "listen_port": 8445, "users": [{"password": "$HY2_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
+    { "type": "hysteria2", "tag": "hy2-in-1", "listen": "::", "listen_port": $PORT_S1, "users": [{"password": "$USER_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
+    { "type": "hysteria2", "tag": "hy2-in-2", "listen": "::", "listen_port": $PORT_S2, "users": [{"password": "$USER_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
+    { "type": "hysteria2", "tag": "hy2-in-3", "listen": "::", "listen_port": $PORT_S3, "users": [{"password": "$USER_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
     
     { "type": "vless", "tag": "vless-in-1", "listen": "127.0.0.1", "listen_port": 10001, "users": [{"uuid": "$VLESS_UUID"}], "transport": {"type": "ws", "path": "/?ed=2048"} },
     { "type": "vless", "tag": "vless-in-2", "listen": "127.0.0.1", "listen_port": 10002, "users": [{"uuid": "$VLESS_UUID"}], "transport": {"type": "ws", "path": "/?ed=2048"} },
@@ -163,7 +188,6 @@ while true; do
     fuser -k -9 "\$IN_PORT/tcp" >/dev/null 2>&1
     pkill -f "\$WORK/sbwpph"
     
-    # 清理当前被污染的缓存
     rm -rf "\$WORK"/.cache "\$WORK"/*.db* "\$WORK"/*.os 2>/dev/null
     
     if [ -d "\$WORK/golden_snapshot" ] && [ \$ATTEMPTS -le 2 ]; then
@@ -264,7 +288,7 @@ EOF
 systemctl daemon-reload && systemctl enable --now w_master >/dev/null 2>&1
 
 # ====================================================================
-# 6. 终极控制台 tw (全新分离出向导菜单)
+# 6. 终极控制台 tw
 # ====================================================================
 cat << 'EOF' > /usr/bin/tw
 #!/bin/bash
@@ -382,6 +406,11 @@ action_cf_nodes() {
     CF1=$(cat /etc/s-box/cf_s1.info); CF2=$(cat /etc/s-box/cf_s2.info); CF3=$(cat /etc/s-box/cf_s3.info)
     UUID=$(cat /etc/s-box/vless_uuid.info); PASS=$(cat /etc/s-box/hy2_pass.info)
     
+    # 动态获取当前使用的端口
+    P1=$(grep -oP '"listen_port":\s*\K\d+' /etc/s-box/front.json | sed -n '1p')
+    P2=$(grep -oP '"listen_port":\s*\K\d+' /etc/s-box/front.json | sed -n '2p')
+    P3=$(grep -oP '"listen_port":\s*\K\d+' /etc/s-box/front.json | sed -n '3p')
+    
     echo -e "\033[1;35m【第二步：提取 VLESS 节点 (Argo CDN 分流)】\033[0m"
     gen_v() { echo "vless://$(echo -n "$UUID@$2:443?encryption=none&security=tls&sni=$2&type=ws&host=$2&path=/?ed=2048#$1")"; }
     echo -e "🇺🇸 S1: \033[40;32m $(gen_v "SkyNet-CF-S1" "$CF1") \033[0m"
@@ -389,9 +418,9 @@ action_cf_nodes() {
     echo -e "🇯🇵 S3: \033[40;32m $(gen_v "SkyNet-CF-S3" "$CF3") \033[0m"
 
     echo -e "\n\033[1;35m【第三步：提取 Hysteria2 节点 (纯 IPv6 穿透直连)】\033[0m"
-    echo -e "🇺🇸 S1: \033[40;32m hysteria2://$PASS@[$IP]:8443/?sni=bing.com&insecure=1#SkyNet-HY2-S1 \033[0m"
-    echo -e "🇬🇧 S2: \033[40;32m hysteria2://$PASS@[$IP]:8444/?sni=bing.com&insecure=1#SkyNet-HY2-S2 \033[0m"
-    echo -e "🇯🇵 S3: \033[40;32m hysteria2://$PASS@[$IP]:8445/?sni=bing.com&insecure=1#SkyNet-HY2-S3 \033[0m"
+    echo -e "🇺🇸 S1: \033[40;32m hysteria2://$PASS@[$IP]:$P1/?sni=bing.com&insecure=1#SkyNet-HY2-S1 \033[0m"
+    echo -e "🇬🇧 S2: \033[40;32m hysteria2://$PASS@[$IP]:$P2/?sni=bing.com&insecure=1#SkyNet-HY2-S2 \033[0m"
+    echo -e "🇯🇵 S3: \033[40;32m hysteria2://$PASS@[$IP]:$P3/?sni=bing.com&insecure=1#SkyNet-HY2-S3 \033[0m"
     echo -e "\033[1;36m=================================================================\033[0m"
     read -p "按回车键返回大盘..."
 }
