@@ -1,30 +1,51 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ (Systemd物理守护 + S4打捞引擎大一统版)
+# 天网系统 V22+ (精准无损寄生 + 定向卸载剥离版)
 # ====================================================================
 clear
 echo -e "\033[1;36m=================================================================\033[0m"
-echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (终极护城河+S4回归版) 🛡️\033[0m"
+echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (纯净环境嗅探版) 🛡️\033[0m"
 echo -e "\033[1;36m=================================================================\033[0m"
 echo -e "\033[1;33m[前置要求] 执行安装前，请确保您已手动完成以下两步：\033[0m"
 echo -e "  1. 已安装 WARP (VPS 必须已具备 IPv4 出口能力)。"
 echo -e "  2. 已通过第三方脚本安装了包含赛风的协议，且\033[1;31m端口必须设为 40000\033[0m。"
 echo -e "\033[1;36m-----------------------------------------------------------------\033[0m"
-echo -e "  \033[1;32m[1]\033[0m 🚀 部署天网 (自动抓取 40000 端口核心，激活四核 Systemd 守护)"
-echo -e "  \033[1;31m[2]\033[0m 🗑️ 彻底卸载天网 (清空所有残留进程和文件，\033[1;32m保留 WARP\033[0m)"
+echo -e "  \033[1;32m[1]\033[0m 🚀 嗅探环境并部署天网 (无损寄生 40000 端口核心，激活四核守护)"
+echo -e "  \033[1;31m[2]\033[0m 🗑️ 定向卸载天网 (仅剥离天网组件，\033[1;32m绝对保留 WARP 与原版勇哥脚本\033[0m)"
 echo -e "  \033[1;33m[0]\033[0m 🚪 退出"
 echo -e "\033[1;36m=================================================================\033[0m"
 read -p "👉 请选择操作序号: " menu_choice
 
+# ====================================================================
+# 【卸载模块】: 定向精确制导，绝不误伤
+# ====================================================================
 if [ "$menu_choice" == "2" ]; then
-    echo -e "\n\033[1;31m⚠️ 正在启动【天网自毁清洗程序】...\033[0m"
-    systemctl stop sing-box front-box w_master skynet-s1 skynet-s2 skynet-s3 skynet-s4 2>/dev/null
-    systemctl disable sing-box front-box w_master skynet-s1 skynet-s2 skynet-s3 skynet-s4 2>/dev/null
-    pkill -9 -f sbwpph; pkill -9 -f sing-box; pkill -9 -f sl1; pkill -9 -f sl2; pkill -9 -f sl3
-    rm -rf /etc/s-box /usr/bin/tw /usr/bin/w_master /etc/systemd/system/skynet-s*.service /etc/systemd/system/front-box.service /etc/systemd/system/w_master.service
+    echo -e "\n\033[1;31m⚠️ 正在启动【天网自毁剥离程序】...\033[0m"
+    
+    # 1. 仅停止天网专有服务
+    systemctl stop front-box w_master skynet-s1 skynet-s2 skynet-s3 skynet-s4 2>/dev/null
+    systemctl disable front-box w_master skynet-s1 skynet-s2 skynet-s3 skynet-s4 2>/dev/null
+    
+    # 2. 仅斩杀天网自己衍生的进程 (不碰全局 sing-box)
+    pkill -9 -f front-box; pkill -9 -f w_master; pkill -9 -f "run_core.sh"; pkill -9 -f "sl1"; pkill -9 -f "sl2"; pkill -9 -f "sl3"
+    
+    # 3. 精准清除天网专有目录与文件 (绝不碰 /etc/s-box/sb.json 和原始核心)
+    rm -rf /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/sub4 /etc/s-box/blacklist
+    rm -f /etc/s-box/front-box /etc/s-box/front.json /etc/s-box/sl[1-4]
+    rm -f /etc/s-box/cf_*.info /etc/s-box/vless_uuid.info /etc/s-box/hy2_pass.info /etc/s-box/hy2.crt /etc/s-box/hy2.key
+    rm -f /etc/s-box/stability.log
+    
+    # 4. 删除控制台和系统服务
+    rm -f /usr/bin/tw /usr/bin/w_master
+    rm -f /etc/systemd/system/skynet-s*.service /etc/systemd/system/front-box.service /etc/systemd/system/w_master.service
     systemctl daemon-reload
-    crontab -l 2>/dev/null | grep -v "stability.log" | grep -v "sb.sh" | crontab -
-    echo -e "\033[1;32m🎉 卸载完毕！系统已恢复纯净状态。\033[0m"
+    
+    # 5. 修复 Crontab：仅剔除天网的 stability.log，完全保留勇哥的 sb.sh 任务
+    crontab -l 2>/dev/null | grep -v "stability.log" | crontab -
+    
+    echo -e "\033[1;32m🎉 卸载完毕！天网系统已完美物理剥离。\033[0m"
+    echo -e "👉 您的 WARP 与 勇哥第三方赛风环境 毫发无损！"
+    echo -e "💡 若想重新启用原版赛风单通道，只需在终端输入 \033[1;36msb\033[0m 进入菜单重启服务即可。"
     exit 0
 elif [ "$menu_choice" == "0" ]; then
     exit 0
@@ -35,41 +56,81 @@ fi
 clear
 echo -e "\033[1;31m🔥 正在执行【天网 V22+】环境嗅探与重构部署...\033[0m"
 
+# ====================================================================
+# 1. 前置条件检测 (WARP IPv4 与 依赖包)
+# ====================================================================
+echo -e "\n\033[1;33m[阶段 1] 正在校验前置环境...\033[0m"
+
 apt-get update -y >/dev/null 2>&1
 apt-get install -y curl wget socat net-tools psmisc jq unzip tar openssl cron nano haveged rng-tools >/dev/null 2>&1
 systemctl enable --now haveged >/dev/null 2>&1
 
+echo -ne "⏳ 检查 IPv4 (WARP) 连通性... "
+IPV4=$(curl -s4 -m 5 api.ipify.org)
+if [ -z "$IPV4" ]; then
+    echo -e "\033[1;31m[失败]\033[0m"
+    echo -e "\033[1;41;37m 💀 致命错误：未检测到 IPv4 出口！\033[0m"
+    echo -e "👉 请先自行运行第三方脚本完成 WARP 安装后，再来运行本脚本。"
+    exit 1
+else
+    echo -e "\033[1;32m[通过] (IP: $IPV4)\033[0m"
+fi
+
+# ====================================================================
+# 2. 核心嗅探 (探测 40000 端口)
+# ====================================================================
 echo -ne "⏳ 检查 40000 端口及赛风核心... "
+if ! netstat -tlnp 2>/dev/null | grep -q ":40000 "; then
+    echo -e "\033[1;31m[失败]\033[0m"
+    echo -e "\033[1;41;37m 💀 致命错误：40000 端口未处于监听状态！\033[0m"
+    echo -e "👉 请先自行运行第三方脚本安装赛风，并\033[1;33m务必将端口设置为 40000\033[0m！"
+    exit 1
+fi
+
 TARGET_PID=$(netstat -tlnp 2>/dev/null | grep ":40000 " | awk '{print $7}' | cut -d'/' -f1 | head -n 1)
 CORE_FILE=$(readlink -f /proc/$TARGET_PID/exe 2>/dev/null)
 
 if [ -z "$CORE_FILE" ] || [ ! -f "$CORE_FILE" ]; then
-    echo -e "\033[1;31m[失败]\033[0m\n💀 致命错误：40000 端口未处于监听状态或核心未找到！"
+    echo -e "\033[1;31m[失败]\033[0m"
+    echo -e "❌ 端口虽在使用，但无法定位核心文件物理路径！"
     exit 1
 fi
 echo -e "\033[1;32m[通过] (定位到核心: $CORE_FILE)\033[0m"
 
+echo -e "\n\033[1;35m🚀 环境校验全部通过！天网核心无损寄生程序全功率启动！\033[0m"
+sleep 2
+
 # ====================================================================
-# 1. 提取配置与四核裂变 (新增 S4)
+# 3. 无损寄生：提取配置与裂变隔离 (不损坏原版文件)
 # ====================================================================
+echo -e "\n\033[1;33m[阶段 2] 正在进行配置劫持与三核物理裂变...\033[0m"
+
+# 从勇哥原配置中提取密码，找不到就随机生成
 USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | awk -F'"' '{print $4}')
 [ -z "$USER_PASS" ] && USER_PASS="Skynet_$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
 
+PORT_S1=40000
+PORT_S2=40001
+PORT_S3=40002
 VLESS_UUID=$(cat /proc/sys/kernel/random/uuid)
-cp "$CORE_FILE" /tmp/sbwpph_core
-cp /etc/s-box/cert.pem /tmp/cert.pem 2>/dev/null || openssl req -new -x509 -days 3650 -nodes -out /tmp/cert.pem -keyout /tmp/private.key -subj "/CN=bing.com" 2>/dev/null
-cp /etc/s-box/private.key /tmp/private.key 2>/dev/null
 
-# 暴力斩首接管
+echo -e "\033[1;32m🎯 配置确立！主入口端口: $PORT_S1，协议密码已保存。\033[0m"
+
+echo -e "⏳ 正在提取证书快照并释放占用端口..."
+cp "$CORE_FILE" /tmp/sbwpph_core || { echo "核心备份失败！"; exit 1; }
+
+# 【关键修复】：仅停用原版服务以释放 40000 端口，绝不死手删文件
 systemctl stop sing-box 2>/dev/null
 systemctl disable sing-box 2>/dev/null
 kill -9 $TARGET_PID 2>/dev/null
-pkill -9 -f sbwpph 2>/dev/null
 
-rm -rf /etc/s-box/*
+# 建立天网专属隔离区
+rm -rf /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/sub4 /etc/s-box/blacklist
 mkdir -p /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/sub4 /etc/s-box/blacklist
-mv /tmp/cert.pem /etc/s-box/hy2.crt
-mv /tmp/private.key /etc/s-box/hy2.key
+
+# 【关键修复】：以复制 (cp) 的形式获取勇哥的证书，而不是移动 (mv)，保障原版完整
+cp /etc/s-box/cert.pem /etc/s-box/hy2.crt 2>/dev/null || openssl req -new -x509 -days 3650 -nodes -out /etc/s-box/hy2.crt -keyout /etc/s-box/hy2.key -subj "/CN=bing.com" 2>/dev/null
+cp /etc/s-box/private.key /etc/s-box/hy2.key 2>/dev/null
 
 echo "us.domain.com" > /etc/s-box/cf_s1.info
 echo "uk.domain.com" > /etc/s-box/cf_s2.info
@@ -77,6 +138,7 @@ echo "jp.domain.com" > /etc/s-box/cf_s3.info
 echo "$VLESS_UUID" > /etc/s-box/vless_uuid.info
 echo "$USER_PASS" > /etc/s-box/hy2_pass.info
 
+# 分发核心给前端和四个后端
 cp /tmp/sbwpph_core /etc/s-box/front-box
 for i in {1..4}; do
     cp /tmp/sbwpph_core /etc/s-box/sub$i/sbwpph
@@ -85,7 +147,47 @@ done
 chmod +x /etc/s-box/front-box
 
 # ====================================================================
-# 2. 建立四核 Systemd 物理守护进程 (真正的稳如老狗)
+# 4. 部署前端路由 (动态端口构建)
+# ====================================================================
+cat << EOF > /etc/s-box/front.json
+{
+  "log": {"level": "fatal"},
+  "inbounds": [
+    { "type": "hysteria2", "tag": "hy2-in-1", "listen": "::", "listen_port": $PORT_S1, "users": [{"password": "$USER_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
+    { "type": "hysteria2", "tag": "hy2-in-2", "listen": "::", "listen_port": $PORT_S2, "users": [{"password": "$USER_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
+    { "type": "hysteria2", "tag": "hy2-in-3", "listen": "::", "listen_port": $PORT_S3, "users": [{"password": "$USER_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
+    
+    { "type": "vless", "tag": "vless-in-1", "listen": "127.0.0.1", "listen_port": 10001, "users": [{"uuid": "$VLESS_UUID"}], "transport": {"type": "ws", "path": "/?ed=2048"} },
+    { "type": "vless", "tag": "vless-in-2", "listen": "127.0.0.1", "listen_port": 10002, "users": [{"uuid": "$VLESS_UUID"}], "transport": {"type": "ws", "path": "/?ed=2048"} },
+    { "type": "vless", "tag": "vless-in-3", "listen": "127.0.0.1", "listen_port": 10003, "users": [{"uuid": "$VLESS_UUID"}], "transport": {"type": "ws", "path": "/?ed=2048"} }
+  ],
+  "outbounds": [
+    { "type": "socks", "tag": "out-s1", "server": "127.0.0.1", "server_port": 1081 },
+    { "type": "socks", "tag": "out-s2", "server": "127.0.0.1", "server_port": 1082 },
+    { "type": "socks", "tag": "out-s3", "server": "127.0.0.1", "server_port": 1083 }
+  ],
+  "route": {"rules": [ 
+    {"inbound": ["hy2-in-1", "vless-in-1"], "outbound": "out-s1"}, 
+    {"inbound": ["hy2-in-2", "vless-in-2"], "outbound": "out-s2"}, 
+    {"inbound": ["hy2-in-3", "vless-in-3"], "outbound": "out-s3"} 
+  ]}
+}
+EOF
+
+cat > /etc/systemd/system/front-box.service << 'EOF'
+[Unit]
+Description=SkyNet Front Router
+After=network.target
+[Service]
+ExecStart=/etc/s-box/front-box run -c /etc/s-box/front.json
+Restart=always
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reload && systemctl enable --now front-box >/dev/null 2>&1
+
+# ====================================================================
+# 5. 建立四核 Systemd 物理守护进程 (真正的稳如老狗)
 # ====================================================================
 for NODE in 1 2 3 4; do
     [ "$NODE" == "1" ] && { IN_PORT=2081; REG="US"; }
@@ -129,47 +231,7 @@ done
 systemctl daemon-reload
 
 # ====================================================================
-# 3. 部署前端路由 (动态端口构建)
-# ====================================================================
-cat << EOF > /etc/s-box/front.json
-{
-  "log": {"level": "fatal"},
-  "inbounds": [
-    { "type": "hysteria2", "tag": "hy2-in-1", "listen": "::", "listen_port": 40000, "users": [{"password": "$USER_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
-    { "type": "hysteria2", "tag": "hy2-in-2", "listen": "::", "listen_port": 40001, "users": [{"password": "$USER_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
-    { "type": "hysteria2", "tag": "hy2-in-3", "listen": "::", "listen_port": 40002, "users": [{"password": "$USER_PASS"}], "tls": {"enabled": true, "server_name": "bing.com", "certificate_path": "/etc/s-box/hy2.crt", "key_path": "/etc/s-box/hy2.key"} },
-    
-    { "type": "vless", "tag": "vless-in-1", "listen": "127.0.0.1", "listen_port": 10001, "users": [{"uuid": "$VLESS_UUID"}], "transport": {"type": "ws", "path": "/?ed=2048"} },
-    { "type": "vless", "tag": "vless-in-2", "listen": "127.0.0.1", "listen_port": 10002, "users": [{"uuid": "$VLESS_UUID"}], "transport": {"type": "ws", "path": "/?ed=2048"} },
-    { "type": "vless", "tag": "vless-in-3", "listen": "127.0.0.1", "listen_port": 10003, "users": [{"uuid": "$VLESS_UUID"}], "transport": {"type": "ws", "path": "/?ed=2048"} }
-  ],
-  "outbounds": [
-    { "type": "socks", "tag": "out-s1", "server": "127.0.0.1", "server_port": 1081 },
-    { "type": "socks", "tag": "out-s2", "server": "127.0.0.1", "server_port": 1082 },
-    { "type": "socks", "tag": "out-s3", "server": "127.0.0.1", "server_port": 1083 }
-  ],
-  "route": {"rules": [ 
-    {"inbound": ["hy2-in-1", "vless-in-1"], "outbound": "out-s1"}, 
-    {"inbound": ["hy2-in-2", "vless-in-2"], "outbound": "out-s2"}, 
-    {"inbound": ["hy2-in-3", "vless-in-3"], "outbound": "out-s3"} 
-  ]}
-}
-EOF
-
-cat > /etc/systemd/system/front-box.service << 'EOF'
-[Unit]
-Description=SkyNet Front Router
-After=network.target
-[Service]
-ExecStart=/etc/s-box/front-box run -c /etc/s-box/front.json
-Restart=always
-[Install]
-WantedBy=multi-user.target
-EOF
-systemctl enable --now front-box >/dev/null 2>&1
-
-# ====================================================================
-# 4. 后端猎犬 (时光倒流引擎 - 适配 Systemd)
+# 6. 后端猎犬 (时光倒流引擎 - 适配 Systemd)
 # ====================================================================
 for NODE in 1 2 3; do
     [ "$NODE" == "1" ] && { IN_PORT=2081; OUT_PORT=1081; DIR="/etc/s-box/sub1"; REG="US"; }
@@ -230,7 +292,7 @@ EOF
 done
 
 # ====================================================================
-# 5. 大后台哨兵 (w_master)
+# 7. 大后台哨兵 (w_master)
 # ====================================================================
 cat > /usr/bin/w_master << 'EOF'
 #!/bin/bash
@@ -261,7 +323,6 @@ while true; do
                 [ ! -f "$WORK/s${NODE}.session" ] && date +%s > "$WORK/s${NODE}.session"
             fi
         elif ! pgrep -f "/etc/s-box/sl${NODE}" > /dev/null; then
-            # 容错：如果抓取为空，再给它 10 秒缓冲机会，防止误杀
             if [ -z "$CURRENT" ]; then
                 sleep 10
                 CURRENT=$(curl -s4 -m 6 --socks5 127.0.0.1:$IN_PORT $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
@@ -291,11 +352,10 @@ EOF
 systemctl enable --now w_master >/dev/null 2>&1
 
 # ====================================================================
-# 6. 终极控制台 tw (含 S4 逻辑与全局防漏清理)
+# 8. 终极控制台 tw (含 S4 逻辑与全局防漏清理)
 # ====================================================================
 cat << 'EOF' > /usr/bin/tw
 #!/bin/bash
-# 核心修复：每次进入总控台，强制清洗所有遗留的 manual 标记，防止彻底卡死
 rm -f /etc/s-box/sub*/s*.manual 2>/dev/null
 
 cleanup_manual() { rm -f /etc/s-box/sub*/s*.manual 2>/dev/null; }
@@ -359,7 +419,6 @@ action_draw() {
     echo "$N_REG" > "$N_DIR/region.info"
 
     while true; do
-        # 稳妥的 systemctl 停服，绝不死机
         systemctl stop "$N_SVC" 2>/dev/null
         rm -rf "$N_DIR"/.cache "$N_DIR"/*.db* "$N_DIR"/*.os 2>/dev/null
         
@@ -523,7 +582,7 @@ EOF
 chmod +x /usr/bin/tw
 
 # ====================================================================
-# 7. 系统自启机制与凌晨重置任务
+# 9. 系统自启机制与凌晨重置任务
 # ====================================================================
 (crontab -l 2>/dev/null | grep -v "stability.log"; echo "0 4 * * * echo \"\$(date '+[%m-%d %H:%M:%S]') 🚀 === 凌晨 4:00 重置，引导每日快照回档 ===\" > /etc/s-box/stability.log && /sbin/reboot") | crontab -
 
