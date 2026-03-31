@@ -1,6 +1,6 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ 终极大一统版 (端口反向物理追踪架构)
+# 天网系统 V22+ 终极大一统版 (修复抽卡误杀提示与耐心寻路版)
 # ====================================================================
 clear
 echo -e "\033[1;36m=================================================================\033[0m"
@@ -31,7 +31,7 @@ clear
 echo -e "\033[1;31m🔥 正在执行【天网 V22+】端口追踪接管流...\033[0m"
 
 # ====================================================================
-# 0. 前置打底：WARP 介入与强心针注入 (防 HAX 卡死)
+# 0. 前置打底：WARP 介入与强心针注入
 # ====================================================================
 echo -e "\n\033[1;33m[阶段 0] 环境初始化与防卡死补丁注入\033[0m"
 echo -e "\033[1;36m👉 如果您已经成功安装过全局 WARP (已获取 IPv4)，请直接按【回车键】跳过此步！\033[0m"
@@ -53,21 +53,13 @@ systemctl enable --now haveged >/dev/null 2>&1
 echo -e "\n\033[1;33m[阶段 1] 启动天网雷达：全域监听 40000 端口...\033[0m"
 
 while true; do
-    # 检查 40000 端口是否被占用 (LISTEN 状态)
     if netstat -tlnp 2>/dev/null | grep -q ":40000 "; then
-        # 提取占用 40000 端口的进程 PID
         TARGET_PID=$(netstat -tlnp 2>/dev/null | grep ":40000 " | awk '{print $7}' | cut -d'/' -f1 | head -n 1)
-        
         if [ -n "$TARGET_PID" ]; then
-            # 通过 Linux 底层 /proc 目录顺藤摸瓜，直接拿到真正的核心物理路径！
             CORE_FILE=$(readlink -f /proc/$TARGET_PID/exe)
-            
             if [ -f "$CORE_FILE" ]; then
                 echo -e "\n\033[1;32m🎯 雷达锁定！\033[0m"
                 echo -e "\033[1;36m成功通过 40000 端口逆向追踪到赛风核心位置：\033[1;37m$CORE_FILE\033[0m"
-                echo -e "即将跳过废话，直接进入天网物理裂变与接管重构！"
-                
-                # 提取出这颗核心，存入保险箱
                 cp "$CORE_FILE" /tmp/sbwpph_core || { echo "核心提取失败！"; exit 1; }
                 sleep 2
                 break
@@ -75,19 +67,17 @@ while true; do
         fi
     fi
 
-    # 如果还没检测到 40000 端口
     echo -e "\r\033[K\033[1;33m⏳ 正在等待 40000 端口激活... \033[0m"
     echo -e "\033[1;36m请执行以下操作：\033[0m"
     echo -e "  1. 打开一个新的 SSH 终端窗口登录 VPS。"
     echo -e "  2. 输入 \033[1;32msb\033[0m 进入勇哥的菜单。"
     echo -e "  3. 安装包含赛风的协议 (如 14 -> Psiphon-VPN)。"
     echo -e "  4. \033[1;31m关键：务必将主端口或对应端口设置为 40000！\033[0m"
-    echo -e "  5. 只要赛风在那边启动，本窗口的雷达会\033[1;32m瞬间自动识别并接管\033[0m，无需您任何操作！"
+    echo -e "  5. 只要赛风在那边启动，本窗口的雷达会\033[1;32m瞬间自动识别并接管\033[0m，无需您操作！"
     echo -e "\033[1;90m(提示: 即使您现在退出，稍后装完再重新运行本脚本，也能秒接管)\033[0m\033[3A"
     sleep 5
 done
 
-# 清理上方不断闪烁的提示信息
 echo -e "\n\n\n\n\033[1;35m🚀 核心抓取完毕，天网劫持重构全功率启动！\033[0m"
 
 # ====================================================================
@@ -95,7 +85,6 @@ echo -e "\n\n\n\n\033[1;35m🚀 核心抓取完毕，天网劫持重构全功率
 # ====================================================================
 echo -e "\n\033[1;33m[阶段 2] 正在进行配置劫持与三核物理裂变...\033[0m"
 
-# 从勇哥生成的 sb.json 中提取密码（容错处理：若找不到直接生成新的安全密码）
 USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | awk -F'"' '{print $4}')
 [ -z "$USER_PASS" ] && USER_PASS="Skynet_$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
 
@@ -110,14 +99,12 @@ echo -e "⏳ 正在提取证书快照并斩断原进程..."
 cp /etc/s-box/cert.pem /tmp/cert.pem 2>/dev/null || openssl req -new -x509 -days 3650 -nodes -out /tmp/cert.pem -keyout /tmp/private.key -subj "/CN=bing.com" 2>/dev/null
 cp /etc/s-box/private.key /tmp/private.key 2>/dev/null
 
-# 暴力斩首接管
 systemctl stop sing-box w_master sl1 sl2 sl3 front-box 2>/dev/null
 systemctl disable sing-box w_master front-box 2>/dev/null
 kill -9 $TARGET_PID 2>/dev/null
 pkill -9 -f sbwpph 2>/dev/null
 pkill -9 -f sing-box 2>/dev/null
 
-# 清洗现场，建立我们的天网隔离区
 rm -rf /etc/s-box/*
 mkdir -p /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/blacklist
 mv /tmp/cert.pem /etc/s-box/hy2.crt
@@ -129,7 +116,6 @@ echo "jp.domain.com" > /etc/s-box/cf_s3.info
 echo "$VLESS_UUID" > /etc/s-box/vless_uuid.info
 echo "$USER_PASS" > /etc/s-box/hy2_pass.info
 
-# 分发核心给前端和三个后端
 cp /tmp/sbwpph_core /etc/s-box/front-box
 cp /tmp/sbwpph_core /etc/s-box/sub1/sbwpph
 cp /tmp/sbwpph_core /etc/s-box/sub2/sbwpph
@@ -228,7 +214,7 @@ while true; do
         API=\${APIS[\$RANDOM % \${#APIS[@]}]}
         IP=\$(curl -s4 -m 5 --socks5 127.0.0.1:\$IN_PORT \$API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
         [ -n "\$IP" ] && break
-        sleep 2
+        sleep 3
     done
 
     if [ "\$IP" == "\$TARGET" ]; then
@@ -372,7 +358,7 @@ action_draw() {
     echo "$N_REG" > "$N_DIR/region.info"
 
     while true; do
-        fuser -k -9 "$N_IN/tcp" >/dev/null 2>&1; pkill -f "$N_DIR/sbwpph"
+        fuser -k -9 "$N_IN/tcp" >/dev/null 2>&1; pkill -f "$N_DIR/sbwpph" 2>/dev/null
         rm -rf "$N_DIR"/.cache "$N_DIR"/*.db* "$N_DIR"/*.os 2>/dev/null
         
         EP=${ENDPOINTS[$RANDOM % ${#ENDPOINTS[@]}]}
@@ -380,10 +366,21 @@ action_draw() {
         
         echo -ne "\r\033[K\033[1;36m⏳ 携带端点 ($EP) 盲抽洗牌中...\033[0m"
         cd "$N_DIR"; export HOME="$N_DIR"
-        nohup ./sbwpph -b 127.0.0.1:$N_IN --cfon --country $N_REG -4 --endpoint "$EP" >/dev/null 2>&1 &
-        sleep 8
         
-        IP=$(curl -s4 -m 5 --socks5 127.0.0.1:$N_IN ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+        # 🔥【修复核心】：增加 disown 脱离终端控制，防止打印 Killed 提示音！
+        nohup ./sbwpph -b 127.0.0.1:$N_IN --cfon --country $N_REG -4 --endpoint "$EP" >/dev/null 2>&1 & disown
+        
+        # 🔥【修复核心】：增加耐心！初始等 12 秒，再进行 3 次 3 秒的探测，总计给足 21 秒的握手时间
+        sleep 12
+        IP=""
+        for i in {1..3}; do
+            API=${APIS[$RANDOM % ${#APIS[@]}]}
+            IP=$(curl -s4 -m 5 --socks5 127.0.0.1:$N_IN $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+            [ -n "$IP" ] && break
+            echo -ne "\r\033[K\033[1;35m⏳ 端点 ($EP) 握手中，第 $i 次耐心探测...\033[0m"
+            sleep 3
+        done
+        
         [ -z "$IP" ] && continue
         
         echo -e "\n\033[1;32m🎯 命中极品 IP: \033[1;37m$IP\033[0m"
