@@ -1,17 +1,17 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ (精准无损寄生 + 定向卸载剥离版)
+# 天网系统 V22+ (裸奔打捞 + 阶梯探测 + Systemd 永久交接版)
 # ====================================================================
 clear
 echo -e "\033[1;36m=================================================================\033[0m"
-echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (纯净环境嗅探版) 🛡️\033[0m"
+echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (终极重构版) 🛡️\033[0m"
 echo -e "\033[1;36m=================================================================\033[0m"
 echo -e "\033[1;33m[前置要求] 执行安装前，请确保您已手动完成以下两步：\033[0m"
 echo -e "  1. 已安装 WARP (VPS 必须已具备 IPv4 出口能力)。"
 echo -e "  2. 已通过第三方脚本安装了包含赛风的协议，且\033[1;31m端口必须设为 40000\033[0m。"
 echo -e "\033[1;36m-----------------------------------------------------------------\033[0m"
 echo -e "  \033[1;32m[1]\033[0m 🚀 嗅探环境并部署天网 (无损寄生 40000 端口核心，激活四核守护)"
-echo -e "  \033[1;31m[2]\033[0m 🗑️ 定向卸载天网 (仅剥离天网组件，\033[1;32m绝对保留 WARP 与原版勇哥脚本\033[0m)"
+echo -e "  \033[1;31m[2]\033[0m 🗑️ 定向卸载天网 (仅剥离天网组件，\033[1;32m绝对保留 WARP 与原版脚本\033[0m)"
 echo -e "  \033[1;33m[0]\033[0m 🚪 退出"
 echo -e "\033[1;36m=================================================================\033[0m"
 read -p "👉 请选择操作序号: " menu_choice
@@ -21,31 +21,24 @@ read -p "👉 请选择操作序号: " menu_choice
 # ====================================================================
 if [ "$menu_choice" == "2" ]; then
     echo -e "\n\033[1;31m⚠️ 正在启动【天网自毁剥离程序】...\033[0m"
-    
-    # 1. 仅停止天网专有服务
     systemctl stop front-box w_master skynet-s1 skynet-s2 skynet-s3 skynet-s4 2>/dev/null
     systemctl disable front-box w_master skynet-s1 skynet-s2 skynet-s3 skynet-s4 2>/dev/null
     
-    # 2. 仅斩杀天网自己衍生的进程 (不碰全局 sing-box)
     pkill -9 -f front-box; pkill -9 -f w_master; pkill -9 -f "run_core.sh"; pkill -9 -f "sl1"; pkill -9 -f "sl2"; pkill -9 -f "sl3"
     
-    # 3. 精准清除天网专有目录与文件 (绝不碰 /etc/s-box/sb.json 和原始核心)
     rm -rf /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/sub4 /etc/s-box/blacklist
     rm -f /etc/s-box/front-box /etc/s-box/front.json /etc/s-box/sl[1-4]
     rm -f /etc/s-box/cf_*.info /etc/s-box/vless_uuid.info /etc/s-box/hy2_pass.info /etc/s-box/hy2.crt /etc/s-box/hy2.key
     rm -f /etc/s-box/stability.log
     
-    # 4. 删除控制台和系统服务
     rm -f /usr/bin/tw /usr/bin/w_master
     rm -f /etc/systemd/system/skynet-s*.service /etc/systemd/system/front-box.service /etc/systemd/system/w_master.service
     systemctl daemon-reload
     
-    # 5. 修复 Crontab：仅剔除天网的 stability.log，完全保留勇哥的 sb.sh 任务
     crontab -l 2>/dev/null | grep -v "stability.log" | crontab -
     
     echo -e "\033[1;32m🎉 卸载完毕！天网系统已完美物理剥离。\033[0m"
     echo -e "👉 您的 WARP 与 勇哥第三方赛风环境 毫发无损！"
-    echo -e "💡 若想重新启用原版赛风单通道，只需在终端输入 \033[1;36msb\033[0m 进入菜单重启服务即可。"
     exit 0
 elif [ "$menu_choice" == "0" ]; then
     exit 0
@@ -68,9 +61,7 @@ systemctl enable --now haveged >/dev/null 2>&1
 echo -ne "⏳ 检查 IPv4 (WARP) 连通性... "
 IPV4=$(curl -s4 -m 5 api.ipify.org)
 if [ -z "$IPV4" ]; then
-    echo -e "\033[1;31m[失败]\033[0m"
-    echo -e "\033[1;41;37m 💀 致命错误：未检测到 IPv4 出口！\033[0m"
-    echo -e "👉 请先自行运行第三方脚本完成 WARP 安装后，再来运行本脚本。"
+    echo -e "\033[1;31m[失败]\033[0m\n💀 未检测到 IPv4 出口！"
     exit 1
 else
     echo -e "\033[1;32m[通过] (IP: $IPV4)\033[0m"
@@ -81,9 +72,7 @@ fi
 # ====================================================================
 echo -ne "⏳ 检查 40000 端口及赛风核心... "
 if ! netstat -tlnp 2>/dev/null | grep -q ":40000 "; then
-    echo -e "\033[1;31m[失败]\033[0m"
-    echo -e "\033[1;41;37m 💀 致命错误：40000 端口未处于监听状态！\033[0m"
-    echo -e "👉 请先自行运行第三方脚本安装赛风，并\033[1;33m务必将端口设置为 40000\033[0m！"
+    echo -e "\033[1;31m[失败]\033[0m\n💀 致命错误：40000 端口未处于监听状态！"
     exit 1
 fi
 
@@ -91,21 +80,17 @@ TARGET_PID=$(netstat -tlnp 2>/dev/null | grep ":40000 " | awk '{print $7}' | cut
 CORE_FILE=$(readlink -f /proc/$TARGET_PID/exe 2>/dev/null)
 
 if [ -z "$CORE_FILE" ] || [ ! -f "$CORE_FILE" ]; then
-    echo -e "\033[1;31m[失败]\033[0m"
-    echo -e "❌ 端口虽在使用，但无法定位核心文件物理路径！"
+    echo -e "\033[1;31m[失败]\033[0m\n❌ 无法定位核心文件物理路径！"
     exit 1
 fi
 echo -e "\033[1;32m[通过] (定位到核心: $CORE_FILE)\033[0m"
-
-echo -e "\n\033[1;35m🚀 环境校验全部通过！天网核心无损寄生程序全功率启动！\033[0m"
 sleep 2
 
 # ====================================================================
-# 3. 无损寄生：提取配置与裂变隔离 (不损坏原版文件)
+# 3. 无损寄生：提取配置与裂变隔离
 # ====================================================================
 echo -e "\n\033[1;33m[阶段 2] 正在进行配置劫持与三核物理裂变...\033[0m"
 
-# 从勇哥原配置中提取密码，找不到就随机生成
 USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | awk -F'"' '{print $4}')
 [ -z "$USER_PASS" ] && USER_PASS="Skynet_$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
 
@@ -116,19 +101,15 @@ VLESS_UUID=$(cat /proc/sys/kernel/random/uuid)
 
 echo -e "\033[1;32m🎯 配置确立！主入口端口: $PORT_S1，协议密码已保存。\033[0m"
 
-echo -e "⏳ 正在提取证书快照并释放占用端口..."
 cp "$CORE_FILE" /tmp/sbwpph_core || { echo "核心备份失败！"; exit 1; }
 
-# 【关键修复】：仅停用原版服务以释放 40000 端口，绝不死手删文件
 systemctl stop sing-box 2>/dev/null
 systemctl disable sing-box 2>/dev/null
 kill -9 $TARGET_PID 2>/dev/null
 
-# 建立天网专属隔离区
 rm -rf /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/sub4 /etc/s-box/blacklist
 mkdir -p /etc/s-box/sub1 /etc/s-box/sub2 /etc/s-box/sub3 /etc/s-box/sub4 /etc/s-box/blacklist
 
-# 【关键修复】：以复制 (cp) 的形式获取勇哥的证书，而不是移动 (mv)，保障原版完整
 cp /etc/s-box/cert.pem /etc/s-box/hy2.crt 2>/dev/null || openssl req -new -x509 -days 3650 -nodes -out /etc/s-box/hy2.crt -keyout /etc/s-box/hy2.key -subj "/CN=bing.com" 2>/dev/null
 cp /etc/s-box/private.key /etc/s-box/hy2.key 2>/dev/null
 
@@ -138,7 +119,6 @@ echo "jp.domain.com" > /etc/s-box/cf_s3.info
 echo "$VLESS_UUID" > /etc/s-box/vless_uuid.info
 echo "$USER_PASS" > /etc/s-box/hy2_pass.info
 
-# 分发核心给前端和四个后端
 cp /tmp/sbwpph_core /etc/s-box/front-box
 for i in {1..4}; do
     cp /tmp/sbwpph_core /etc/s-box/sub$i/sbwpph
@@ -147,7 +127,7 @@ done
 chmod +x /etc/s-box/front-box
 
 # ====================================================================
-# 4. 部署前端路由 (动态端口构建)
+# 4. 部署前端路由
 # ====================================================================
 cat << EOF > /etc/s-box/front.json
 {
@@ -187,18 +167,17 @@ EOF
 systemctl daemon-reload && systemctl enable --now front-box >/dev/null 2>&1
 
 # ====================================================================
-# 5. 建立四核 Systemd 物理守护进程 (真正的稳如老狗)
+# 5. 建立四核 Systemd 物理守护进程 (用于锁定保活)
 # ====================================================================
 for NODE in 1 2 3 4; do
     [ "$NODE" == "1" ] && { IN_PORT=2081; REG="US"; }
     [ "$NODE" == "2" ] && { IN_PORT=2082; REG="GB"; }
     [ "$NODE" == "3" ] && { IN_PORT=2083; REG="JP"; }
-    [ "$NODE" == "4" ] && { IN_PORT=2084; REG="US"; } # S4 默认区域
+    [ "$NODE" == "4" ] && { IN_PORT=2084; REG="US"; }
 
     DIR="/etc/s-box/sub$NODE"
     echo "$REG" > "$DIR/region.info"
     
-    # 创建动态启动脚本
     cat > "$DIR/run_core.sh" << EOF
 #!/bin/bash
 cd $DIR
@@ -210,7 +189,6 @@ exec ./sbwpph -b 127.0.0.1:$IN_PORT --cfon --country \$REG -4 --endpoint "\$EP"
 EOF
     chmod +x "$DIR/run_core.sh"
 
-    # 创建 Systemd 服务
     cat > /etc/systemd/system/skynet-s${NODE}.service << EOF
 [Unit]
 Description=SkyNet Backend S${NODE}
@@ -223,7 +201,6 @@ RestartSec=3
 [Install]
 WantedBy=multi-user.target
 EOF
-    # S4 作为斥候，默认不开机启动，由 tw 面板手动唤醒
     if [ "$NODE" != "4" ]; then
         systemctl enable skynet-s${NODE} >/dev/null 2>&1
     fi
@@ -231,7 +208,7 @@ done
 systemctl daemon-reload
 
 # ====================================================================
-# 6. 后端猎犬 (时光倒流引擎 - 适配 Systemd)
+# 6. 后端猎犬 (猎犬引擎重构：搜寻阶段裸奔，锁定后交接)
 # ====================================================================
 for NODE in 1 2 3; do
     [ "$NODE" == "1" ] && { IN_PORT=2081; OUT_PORT=1081; DIR="/etc/s-box/sub1"; REG="US"; }
@@ -246,7 +223,7 @@ APIS=("http://api.ipify.org" "http://icanhazip.com" "http://ifconfig.me/ip")
 ENDPOINTS=("162.159.192.1:2408" "162.159.193.1:2408" "162.159.195.1:2408" "engage.cloudflareclient.com:2408" "162.159.36.1:2408" "162.159.132.53:2408")
 
 ATTEMPTS=0; CHASE_START=\$(date +%s)
-echo "\$(date '+[%m-%d %H:%M:%S]') [🕵️ 猎犬] S\${NODE} 出动！尝试黄金快照回档..." >> "\$SLA_LOG"
+echo "\$(date '+[%m-%d %H:%M:%S]') [🕵️ 猎犬] S\${NODE} 出动！开始黄金回档与搜索..." >> "\$SLA_LOG"
 
 while true; do
     ((ATTEMPTS++))
@@ -256,31 +233,43 @@ while true; do
         touch "\$WORK/s\${NODE}.hibernating"; systemctl stop skynet-s\${NODE}; exit 0
     fi
     
-    systemctl stop skynet-s\${NODE}
+    # 彻底停掉守护，释放端口，准备裸奔探测
+    systemctl stop skynet-s\${NODE} 2>/dev/null
+    fuser -k -9 "\$IN_PORT/tcp" >/dev/null 2>&1
+    pkill -9 -f "\$WORK/sbwpph" 2>/dev/null
     rm -rf "\$WORK"/.cache "\$WORK"/*.db* "\$WORK"/*.os 2>/dev/null
     
     if [ -d "\$WORK/golden_snapshot" ] && [ \$ATTEMPTS -le 2 ]; then
         cp -a "\$WORK/golden_snapshot/." "\$WORK/" 2>/dev/null
+        EP=\$(cat "\$WORK/current.endpoint" 2>/dev/null)
+        [ -z "\$EP" ] && EP="162.159.192.1:2408"
     else
         EP=\${ENDPOINTS[\$RANDOM % \${#ENDPOINTS[@]}]}
         echo "\$EP" > "\$WORK/current.endpoint"
     fi
 
-    systemctl start skynet-s\${NODE}
+    cd "\$WORK"; export HOME="\$WORK"
+    nohup ./sbwpph -b 127.0.0.1:\$IN_PORT --cfon --country \$(cat region.info) -4 --endpoint "\$EP" >/dev/null 2>&1 & disown
     
-    sleep 15
+    sleep 8
     IP=""
-    for i in {1..3}; do
+    for i in {1..4}; do
         API=\${APIS[\$RANDOM % \${#APIS[@]}]}
-        IP=\$(curl -s4 -m 5 --socks5 127.0.0.1:\$IN_PORT \$API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+        IP=\$(curl -s4 -m 6 --socks5 127.0.0.1:\$IN_PORT \$API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
         [ -n "\$IP" ] && break
-        sleep 3
+        sleep 4
     done
 
     if [ "\$IP" == "\$TARGET" ]; then
         rm -f "\$WORK/s\${NODE}.hibernating" 2>/dev/null
         COST=\$((\$(date +%s) - CHASE_START))
         echo "\$(date '+[%m-%d %H:%M:%S]') [🚀 回档] S\${NODE} 时光倒流成功！历经 \$ATTEMPTS 次，耗时 \$COST 秒！" >> "\$SLA_LOG"
+        
+        # 【关键交接】命中后，杀掉裸奔进程，交给 systemd 接管
+        fuser -k -9 "\$IN_PORT/tcp" >/dev/null 2>&1
+        pkill -9 -f "\$WORK/sbwpph" 2>/dev/null
+        systemctl start skynet-s\${NODE}
+
         fuser -k -9 "\$OUT_PORT/tcp" >/dev/null 2>&1
         socat TCP4-LISTEN:\$OUT_PORT,fork,reuseaddr TCP4:127.0.0.1:\$IN_PORT &
         [ ! -f "\$WORK/s\${NODE}.session" ] && date +%s > "\$WORK/s\${NODE}.session"
@@ -352,7 +341,7 @@ EOF
 systemctl enable --now w_master >/dev/null 2>&1
 
 # ====================================================================
-# 8. 终极控制台 tw (含 S4 逻辑与全局防漏清理)
+# 8. 终极控制台 tw (含裸奔抽卡、S4防抖打捞)
 # ====================================================================
 cat << 'EOF' > /usr/bin/tw
 #!/bin/bash
@@ -419,23 +408,27 @@ action_draw() {
     echo "$N_REG" > "$N_DIR/region.info"
 
     while true; do
+        # 裸奔重构：强行清空端口，抛弃 systemd，速度拉满
         systemctl stop "$N_SVC" 2>/dev/null
+        fuser -k -9 "$N_IN/tcp" >/dev/null 2>&1
+        pkill -9 -f "$N_DIR/sbwpph" 2>/dev/null
         rm -rf "$N_DIR"/.cache "$N_DIR"/*.db* "$N_DIR"/*.os 2>/dev/null
         
         EP=${ENDPOINTS[$RANDOM % ${#ENDPOINTS[@]}]}
         echo "$EP" > "$N_DIR/current.endpoint"
         
         echo -ne "\r\033[K\033[1;36m⏳ 携带端点 ($EP) 盲抽洗牌中...\033[0m"
-        systemctl start "$N_SVC"
+        cd "$N_DIR"; export HOME="$N_DIR"
+        nohup ./sbwpph -b 127.0.0.1:$N_IN --cfon --country $N_REG -4 --endpoint "$EP" >/dev/null 2>&1 & disown
         
-        sleep 12
+        sleep 8
         IP=""
-        for i in {1..3}; do
+        for i in {1..4}; do
             API=${APIS[$RANDOM % ${#APIS[@]}]}
-            IP=$(curl -s4 -m 5 --socks5 127.0.0.1:$N_IN $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+            IP=$(curl -s4 -m 6 --socks5 127.0.0.1:$N_IN $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
             [ -n "$IP" ] && break
             echo -ne "\r\033[K\033[1;35m⏳ 端点 ($EP) 握手中，第 $i 次耐心探测...\033[0m"
-            sleep 3
+            sleep 4
         done
         
         [ -z "$IP" ] && continue
@@ -443,11 +436,17 @@ action_draw() {
         echo -e "\n\033[1;32m🎯 命中极品 IP: \033[1;37m$IP\033[0m"
         echo -ne "\033[1;33m✨ 满意按 [Y] 制作黄金快照并挂锁，按回车重抽: \033[0m"; read k
         if [[ "$k" == "y" || "$k" == "Y" ]]; then
+            # 交接重构：强行结束裸奔，保存黄金文件后启动 Systemd
+            fuser -k -9 "$N_IN/tcp" >/dev/null 2>&1
+            pkill -9 -f "$N_DIR/sbwpph" 2>/dev/null
+
             rm -rf "$N_DIR/golden_snapshot"; mkdir -p "$N_DIR/golden_snapshot"
             cp -a "$N_DIR/." "$N_DIR/golden_snapshot/" 2>/dev/null
             echo "$IP" > "$N_DIR/s$N.lock"; date +%s > "$N_DIR/s$N.uptime"; date +%s > "$N_DIR/s$N.session"
             rm -f "$N_DIR/s$N.hibernating" 2>/dev/null
-            echo -e "\033[1;32m✅ 快照已封印！挂锁完毕！(底层交由 Systemd 永久守护)\033[0m"; sleep 2; break
+            
+            systemctl start "$N_SVC"
+            echo -e "\033[1;32m✅ 快照已封印！挂锁完毕！(底层已交由 Systemd 永久守护)\033[0m"; sleep 2; break
         fi
     done
     rm -f "$N_DIR/s$N.manual" 2>/dev/null
@@ -470,7 +469,7 @@ action_toggle() {
 }
 
 # ====================================================================
-# 🔥 幽灵斥候 S4：深海打捞旁路引擎
+# 🔥 幽灵斥候 S4：深海打捞旁路引擎 (纯裸奔极速版)
 # ====================================================================
 action_s4() {
     DIR="/etc/s-box/sub4"; BLACKLIST_FILE="/etc/s-box/blacklist/bad_ips.txt"; SVC="skynet-s4"; IN_PORT=2084; touch "$BLACKLIST_FILE"
@@ -490,24 +489,46 @@ action_s4() {
         
         read -p "打捞网数 (默认 20): " SCAN_MAX; [ -z "$SCAN_MAX" ] && SCAN_MAX=20
         A=0; VALID=()
+        
+        # S4打捞前彻底屏蔽 systemd，确立裸奔环境
+        systemctl stop "$SVC" 2>/dev/null
+
         while [ $A -lt $SCAN_MAX ]; do
             ((A++)); echo -ne "\r\033[K🔍 [$A/$SCAN_MAX] 下网..."
             
-            systemctl stop "$SVC" >/dev/null 2>&1
+            # 清扫上一轮的裸奔残骸，绝不能导致 2084 端口冲突！
+            fuser -k -9 "$IN_PORT/tcp" >/dev/null 2>&1
+            pkill -9 -f "$DIR/sbwpph" 2>/dev/null
             rm -rf "$DIR"/.cache "$DIR"/*.db* "$DIR"/*.os 2>/dev/null
+            
             EP=${ENDPOINTS[$RANDOM % ${#ENDPOINTS[@]}]}
             echo "$EP" > "$DIR/current.endpoint"
-            systemctl start "$SVC"
-            sleep 15
             
-            IP=$(curl -s4 -m 5 --socks5 127.0.0.1:$IN_PORT ${APIS[$RANDOM % ${#APIS[@]}]} 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+            cd "$DIR"; export HOME="$DIR"
+            nohup ./sbwpph -b 127.0.0.1:$IN_PORT --cfon --country $TR -4 --endpoint "$EP" >/dev/null 2>&1 & disown
+            
+            # 先硬睡 8 秒，然后开启阶梯探测，每步测足 4 秒
+            sleep 8
+            IP=""
+            for i in {1..4}; do
+                API=${APIS[$RANDOM % ${#APIS[@]}]}
+                IP=$(curl -s4 -m 6 --socks5 127.0.0.1:$IN_PORT $API 2>/dev/null | grep -E -o "([0-9]{1,3}[\.]){3}[0-9]{1,3}" | head -n 1)
+                if [ -n "$IP" ]; then break; fi
+                echo -ne "\r\033[K\033[1;35m⏳ 潜水员憋气中，第 $i 次测网...\033[0m"
+                sleep 4
+            done
+
             if [ -n "$IP" ]; then
                 if grep -q "^${IP}$" "$BLACKLIST_FILE" 2>/dev/null; then echo -e "\n  ├─ 🚫 触发黑名单: $IP"
                 else echo -e "\n  └─ 🌟 捕获纯净极品: \033[1;32m$IP\033[0m"; VALID+=("$IP"); fi
             else echo -e "\n  ├─ \033[1;31m❌ 节点寻路超时\033[0m"; fi
         done
         echo -e "\n\033[1;33m📊 打捞获得 ${#VALID[@]} 个极品。\033[0m"
-        systemctl stop "$SVC" >/dev/null 2>&1
+        
+        # 打捞结束，清理尸体
+        fuser -k -9 "$IN_PORT/tcp" >/dev/null 2>&1
+        pkill -9 -f "$DIR/sbwpph" 2>/dev/null
+        
         if [ ${#VALID[@]} -gt 0 ]; then
             printf "%s\n" "${VALID[@]}" | sort -V | uniq -c | sort -nr
             echo "  [1] 全部绞杀 (打入黑名单)   [0] 退出"
@@ -588,5 +609,5 @@ chmod +x /usr/bin/tw
 
 nohup /usr/bin/w_master >/dev/null 2>&1 &
 
-echo -e "\n\033[1;32m🎉 天网系统 V22+ 终极版部署完毕！底层重构与 S4 旁路引擎已激活！\033[0m"
+echo -e "\n\033[1;32m🎉 天网系统 V22+ 终极版部署完毕！极致裸奔搜索与保活已开启！\033[0m"
 echo -e "\033[1;37m👉 请在终端输入 \033[1;36mtw\033[1;37m 唤醒你的天网！\033[0m"
