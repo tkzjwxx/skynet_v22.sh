@@ -1,12 +1,12 @@
 #!/bin/bash
 # ====================================================================
-# 天网系统 V22+ 终极大一统版 (智能嗅探 + 断点续传接管架构)
+# 天网系统 V22+ 终极大一统版 (端口反向物理追踪架构)
 # ====================================================================
 clear
 echo -e "\033[1;36m=================================================================\033[0m"
-echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (终极嗅探接管版) 🛡️\033[0m"
+echo -e "\033[1;37m                 🛡️ 天网系统 V22+ (端口反向追踪接管版) 🛡️\033[0m"
 echo -e "\033[1;36m=================================================================\033[0m"
-echo -e "  \033[1;32m[1]\033[0m 🚀 部署天网 (自动嗅探并劫持已安装的赛风核心)"
+echo -e "  \033[1;32m[1]\033[0m 🚀 部署天网 (监听 40000 端口，自动抓取赛风核心)"
 echo -e "  \033[1;31m[2]\033[0m 🗑️ 彻底卸载天网 (清空所有残留，保留 WARP)"
 echo -e "  \033[1;33m[0]\033[0m 🚪 退出"
 echo -e "\033[1;36m=================================================================\033[0m"
@@ -16,7 +16,7 @@ if [ "$menu_choice" == "2" ]; then
     echo -e "\n\033[1;31m⚠️ 正在启动【天网自毁清洗程序】...\033[0m"
     systemctl stop sing-box front-box w_master sl1 sl2 sl3 2>/dev/null
     systemctl disable sing-box front-box w_master 2>/dev/null
-    pkill -9 -f sbwpph; pkill -9 -f front-box; pkill -9 -f w_master; pkill -9 -f sl1
+    pkill -9 -f sbwpph; pkill -9 -f sing-box; pkill -9 -f front-box; pkill -9 -f w_master; pkill -9 -f sl1
     rm -rf /etc/s-box /usr/bin/tw /usr/bin/w_master /etc/systemd/system/front-box.service /etc/systemd/system/w_master.service /etc/systemd/system/sing-box.service
     crontab -l 2>/dev/null | grep -v "stability.log" | grep -v "sb.sh" | grep -v "sing-box" | crontab -
     echo -e "\033[1;32m🎉 卸载完毕！系统已恢复纯净状态 (WARP未触碰)。\033[0m"
@@ -28,7 +28,7 @@ elif [ "$menu_choice" != "1" ]; then
 fi
 
 clear
-echo -e "\033[1;31m🔥 正在执行【天网 V22+】嗅探接管流...\033[0m"
+echo -e "\033[1;31m🔥 正在执行【天网 V22+】端口追踪接管流...\033[0m"
 
 # ====================================================================
 # 0. 前置打底：WARP 介入与强心针注入 (防 HAX 卡死)
@@ -42,70 +42,80 @@ if [[ "$run_warp" == "y" || "$run_warp" == "Y" ]]; then
     echo -e "\n\033[1;35m⏸️ 探测到 WARP 部署结束，主脚本恢复执行...\033[0m"
 fi
 
-# 注入 haveged 强心针，极大降低生成证书/UUID时卡死的概率
 echo -e "⏳ 正在安装基础依赖与随机数发生器 (防卡死神药)..."
 apt-get update -y >/dev/null 2>&1
 apt-get install -y curl wget socat net-tools psmisc jq unzip tar openssl cron nano haveged rng-tools >/dev/null 2>&1
 systemctl enable --now haveged >/dev/null 2>&1
 
 # ====================================================================
-# 1. 智能嗅探：断点续传逻辑
+# 1. 降维打击：通过 40000 端口反向追踪核心位置
 # ====================================================================
-echo -e "\n\033[1;33m[阶段 1] 智能嗅探第三方核心...\033[0m"
+echo -e "\n\033[1;33m[阶段 1] 启动天网雷达：全域监听 40000 端口...\033[0m"
 
 while true; do
-    if [ -f "/etc/s-box/sbwpph" ] && grep -q "psiphon" /etc/s-box/sb.json 2>/dev/null; then
-        echo -e "\033[1;32m✅ 嗅探成功！检测到您已经千辛万苦装好了勇哥的赛风核心！\033[0m"
-        echo -e "即将跳过安装阶段，直接进入天网物理裂变与接管重构！"
-        sleep 2
-        break
-    else
-        echo -e "\033[1;31m⚠️ 未检测到第三方赛风核心 (sbwpph)，或配置不完整。\033[0m"
-        echo -e "\033[1;36m为了防止 HAX 嵌套卡死，请您执行以下【无损操作】：\033[0m"
-        echo -e "  1. 保留此窗口不动，\033[1;33m打开一个新的 SSH 终端窗口\033[0m 登录您的 VPS。"
-        echo -e "  2. 在新窗口输入 \033[1;32msb\033[0m (或拉取勇哥脚本) 进入安装菜单。"
-        echo -e "  3. 慢条斯理地安装一个【包含赛风的协议】(比如设置端口为 40000)。"
-        echo -e "  4. 确认在面板中看到协议已经跑起来后，回到本窗口按下【回车键】！"
-        echo -e "\n💡 \033[1;90m(提示：即使您现在按 Ctrl+C 退出了本脚本，稍后装完再重新运行 bash skynet_v22.sh，也能自动识别并秒进接管阶段！)\033[0m"
+    # 检查 40000 端口是否被占用 (LISTEN 状态)
+    if netstat -tlnp 2>/dev/null | grep -q ":40000 "; then
+        # 提取占用 40000 端口的进程 PID
+        TARGET_PID=$(netstat -tlnp 2>/dev/null | grep ":40000 " | awk '{print $7}' | cut -d'/' -f1 | head -n 1)
         
-        read -p "👉 当您确认已经手动安装完赛风后，请按【回车键】让我重新嗅探..." 
-        echo -e "🔄 正在重新嗅探..."
-        sleep 2
+        if [ -n "$TARGET_PID" ]; then
+            # 通过 Linux 底层 /proc 目录顺藤摸瓜，直接拿到真正的核心物理路径！
+            CORE_FILE=$(readlink -f /proc/$TARGET_PID/exe)
+            
+            if [ -f "$CORE_FILE" ]; then
+                echo -e "\n\033[1;32m🎯 雷达锁定！\033[0m"
+                echo -e "\033[1;36m成功通过 40000 端口逆向追踪到赛风核心位置：\033[1;37m$CORE_FILE\033[0m"
+                echo -e "即将跳过废话，直接进入天网物理裂变与接管重构！"
+                
+                # 提取出这颗核心，存入保险箱
+                cp "$CORE_FILE" /tmp/sbwpph_core || { echo "核心提取失败！"; exit 1; }
+                sleep 2
+                break
+            fi
+        fi
     fi
+
+    # 如果还没检测到 40000 端口
+    echo -e "\r\033[K\033[1;33m⏳ 正在等待 40000 端口激活... \033[0m"
+    echo -e "\033[1;36m请执行以下操作：\033[0m"
+    echo -e "  1. 打开一个新的 SSH 终端窗口登录 VPS。"
+    echo -e "  2. 输入 \033[1;32msb\033[0m 进入勇哥的菜单。"
+    echo -e "  3. 安装包含赛风的协议 (如 14 -> Psiphon-VPN)。"
+    echo -e "  4. \033[1;31m关键：务必将主端口或对应端口设置为 40000！\033[0m"
+    echo -e "  5. 只要赛风在那边启动，本窗口的雷达会\033[1;32m瞬间自动识别并接管\033[0m，无需您任何操作！"
+    echo -e "\033[1;90m(提示: 即使您现在退出，稍后装完再重新运行本脚本，也能秒接管)\033[0m\033[3A"
+    sleep 5
 done
 
-echo -e "\n\033[1;35m🚀 赛风通道确认完毕，天网核心劫持程序全功率启动！\033[0m"
+# 清理上方不断闪烁的提示信息
+echo -e "\n\n\n\n\033[1;35m🚀 核心抓取完毕，天网劫持重构全功率启动！\033[0m"
 
 # ====================================================================
 # 2. 鸠占鹊巢：无损提取配置与裂变隔离
 # ====================================================================
 echo -e "\n\033[1;33m[阶段 2] 正在进行配置劫持与三核物理裂变...\033[0m"
 
-# 从勇哥生成的 sb.json 中智能提取用户设置的端口和密码
-USER_PORT=$(grep -Eo '"listen_port":[ \t]*[0-9]+' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | grep -Eo '[0-9]+')
+# 从勇哥生成的 sb.json 中提取密码（容错处理：若找不到直接生成新的安全密码）
 USER_PASS=$(grep -Eo '"password":[ \t]*"[^"]+"' /etc/s-box/sb.json 2>/dev/null | tail -n 1 | awk -F'"' '{print $4}')
-
-# 容错处理
-[ -z "$USER_PORT" ] && USER_PORT=40000
 [ -z "$USER_PASS" ] && USER_PASS="Skynet_$(tr -dc A-Za-z0-9 </dev/urandom | head -c 8)"
 
-PORT_S1=$USER_PORT
-PORT_S2=$((USER_PORT + 1))
-PORT_S3=$((USER_PORT + 2))
+PORT_S1=40000
+PORT_S2=40001
+PORT_S3=40002
 VLESS_UUID=$(cat /proc/sys/kernel/random/uuid)
 
-echo -e "\033[1;32m🎯 成功提取！主入口起始端口: $PORT_S1，协议密码: $USER_PASS。\033[0m"
+echo -e "\033[1;32m🎯 配置确立！主入口端口: $PORT_S1，协议密码已保存。\033[0m"
 
-# 【防爆备份逻辑】：先备份，备份成功才杀掉原进程和清洗目录
-echo -e "⏳ 正在提取核心与证书快照..."
-cp /etc/s-box/sbwpph /tmp/sbwpph_core || { echo -e "\033[1;41;37m 💀 致命错误：核心备份失败！为保护您的数据，脚本已安全中止！\033[0m"; exit 1; }
+echo -e "⏳ 正在提取证书快照并斩断原进程..."
 cp /etc/s-box/cert.pem /tmp/cert.pem 2>/dev/null || openssl req -new -x509 -days 3650 -nodes -out /tmp/cert.pem -keyout /tmp/private.key -subj "/CN=bing.com" 2>/dev/null
 cp /etc/s-box/private.key /tmp/private.key 2>/dev/null
 
-# 备份成功，开始斩首接管
+# 暴力斩首接管
 systemctl stop sing-box w_master sl1 sl2 sl3 front-box 2>/dev/null
 systemctl disable sing-box w_master front-box 2>/dev/null
+kill -9 $TARGET_PID 2>/dev/null
 pkill -9 -f sbwpph 2>/dev/null
+pkill -9 -f sing-box 2>/dev/null
 
 # 清洗现场，建立我们的天网隔离区
 rm -rf /etc/s-box/*
@@ -439,7 +449,7 @@ while true; do
     echo -e "  \033[1;33m⚙️ 【天网矩阵调度中心】\033[0m"
     echo -e "  [1] 🇺🇸 S1 战区 (抽卡挂锁/通道休眠)     [4] ☁️ 配置并提取 Argo/HY2 节点链接"
     echo -e "  [2] 🇬🇧 S2 战区 (抽卡挂锁/通道休眠)     [5] 📜 追踪系统实时史记 (日志)"
-    echo -e "  [3] 🇯细 S3 战区 (抽卡挂锁/通道休眠)     [0] 🚪 退出总控台"
+    echo -e "  [3] 🇯🇵 S3 战区 (抽卡挂锁/通道休眠)     [0] 🚪 退出总控台"
     echo ""
     read -t 10 -p "👉 请输入指令 (10秒无操作将自动刷新大盘): " cmd
     if [ $? -gt 128 ]; then continue; fi
